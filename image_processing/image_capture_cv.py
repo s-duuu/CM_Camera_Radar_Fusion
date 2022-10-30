@@ -14,12 +14,12 @@ class image_capture:
     def __init__(self, frame_divide):
         self.img_cnt = 0
         self.cnt = 0
-        self.folder_name = "" + str(ctime(time()))
-        self.video_path = ""
+        self.folder_name = "/home/heven/CoDeep_ws/src/yolov5_ros/image_processing/" + str(ctime(time()))
+        self.video_path = "/home/heven/CoDeep_ws/src/yolov5_ros/image_processing/video/test1.mp4"
         createFolder(self.folder_name)
         self.capture(frame_divide)
     
-    def capture(self, frame_devide):
+    def capture(self, frame_divide):
         vidcap = cv2.VideoCapture(self.video_path)
         while (vidcap.isOpened()):
             ret, img = vidcap.read()
@@ -28,7 +28,7 @@ class image_capture:
                 print("No video")
                 break
 
-            if self.img_cnt % self.frame_divide == 0:
+            if self.img_cnt % frame_divide == 0:
                 photo_name = self.folder_name + "/" + str(self.cnt) + ".jpg"
                 cv2.imwrite(photo_name, img)
                 print("Photo %d is saved." % (self.cnt))
