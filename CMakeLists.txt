@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(co_deep_project)
+project(yolov5_ros)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
@@ -107,7 +107,7 @@ generate_messages(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
- LIBRARIES co_deep_project
+ LIBRARIES yolov5_ros
  CATKIN_DEPENDS rospy sensor_msgs std_msgs message_runtime
 #  DEPENDS system_lib
 )
@@ -163,7 +163,7 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  src/detect.py src/detector.py
+  src/detect.py src/detector.py image_processing/image_parser.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

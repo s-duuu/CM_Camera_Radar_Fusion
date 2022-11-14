@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>co_deep_project</name>
+  <name>yolov5_ros</name>
   <version>0.0.0</version>
   <description>The yolov5_ros package</description>
 

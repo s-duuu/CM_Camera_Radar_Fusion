@@ -12,7 +12,7 @@ import sys
 from rostopic import get_topic_type
 
 from sensor_msgs.msg import Image, CompressedImage
-from co_deep_project.msg import BoundingBox, BoundingBoxes
+from msg import BoundingBox, BoundingBoxes
 
 
 # add yolov5 submodule to path
@@ -23,16 +23,16 @@ if str(ROOT) not in sys.path:
 ROOT = Path(os.path.relpath(ROOT, Path.cwd()))  # relative path
 
 # import from yolov5 submodules
-from models.common import DetectMultiBackend
-from utils.general import (
+from yolov5.models.common import DetectMultiBackend
+from yolov5.utils.general import (
     check_img_size,
     check_requirements,
     non_max_suppression,
     scale_coords
 )
-from utils.plots import Annotator, colors
-from utils.torch_utils import select_device
-from utils.augmentations import letterbox
+from yolov5.utils.plots import Annotator, colors
+from yolov5.utils.torch_utils import select_device
+from yolov5.utils.augmentations import letterbox
 
 
 @torch.no_grad()
@@ -100,6 +100,7 @@ class Yolov5Detector:
         
         # Initialize CV_Bridge
         self.bridge = CvBridge()
+        self.image = np.array()
 
     def callback(self, data):
         """adapted from yolov5/detect.py"""
@@ -109,6 +110,7 @@ class Yolov5Detector:
         else:
             im = self.bridge.imgmsg_to_cv2(data, desired_encoding="bgr8")
         
+        self.image = im
         im, im0 = self.preprocess(im)
         # print(im.shape)
         # print(img0.shape)
