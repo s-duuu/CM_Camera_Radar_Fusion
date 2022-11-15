@@ -9,8 +9,9 @@ from dataclasses import dataclass
 @dataclass
 class object:
     index: int = None
-    distance: int = None
-    azimuth: int = None
+    distance: float = None
+    azimuth: float = None
+    velocity: float = None
 
 class pcl_data_calc():
     def __init__(self):
@@ -26,4 +27,11 @@ class pcl_data_calc():
         !!!Input PCL processing Code!!!
         
         """
-        
+
+if __name__ == '__main__':
+    try:
+        pcl_data_calc()
+        rospy.spin()
+    
+    except rospy.ROSInterruptException:
+        pass
