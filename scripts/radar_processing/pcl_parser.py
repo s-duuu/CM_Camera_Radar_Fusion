@@ -21,15 +21,13 @@ class pcl_data_calc():
         self.xmin = 3.0
         self.xmax = 4.0
         self.mean_k = 1
-        self.thresh = 0.001
-        for i in pc2.read_points(data, skip_nans=True):
-            print(i)
+        self.thresh = 0.0005
         # Convert sensor_msgs/PointCloud2 -> pcl
         cloud = pcl_helper.ros_to_pcl(data)
         if cloud.size > 0:
 
             # ROI setting
-            cloud = self.do_passthrough(cloud, 'y', -5, -1.75)
+            cloud = self.do_passthrough(cloud, 'y', 1.75, 5)
 
             if cloud.size > 0:
                 # Removing noise
@@ -37,7 +35,8 @@ class pcl_data_calc():
                 cloud = self.do_moving_least_squares(cloud)
                 
                 if cloud.size > 0:
-                    cloud = self.do_statistical_outlier_filtering(cloud, self.mean_k, self.thresh)    
+                    cloud = self.do_statistical_outlier_filtering(cloud, self.mean_k, self.thresh)
+                    cloud, _ = self.do_euclidean_clustering(cloud)
                 # Removing ground
                 # _, _, cloud = self.do_ransac_plane_normal_segmentation(cloud, 0.05)
                 cloud = pcl_helper.XYZ_to_XYZRGB(cloud, (255,255,255))
@@ -46,6 +45,7 @@ class pcl_data_calc():
             
             new_data = pcl_helper.pcl_to_ros(cloud)
             self.pub.publish(new_data)
+            rospy.loginfo("Filtered Point Published")
         
         else:
             pass
@@ -72,12 +72,11 @@ class pcl_data_calc():
         tree = pcl_data.make_kdtree()
 
         ec = pcl_data.make_EuclideanClusterExtraction()
-        ec.set_ClusterTolerance(0.015)
-        ec.set_MinClusterSize(50)
-        ec.set_MaxClusterSize(20000)
+        ec.set_ClusterTolerance(0.01)
+        ec.set_MinClusterSize(1)
+        ec.set_MaxClusterSize(4)
         ec.set_SearchMethod(tree)
         cluster_indices = ec.Extract()
-        cluster_color = pcl_helper.get_color_list(len(cluster_indices))
 
         color_cluster_point_list = []
 
@@ -85,8 +84,8 @@ class pcl_data_calc():
             for i, indice in enumerate(indices):
                 color_cluster_point_list.append([pcl_data[indice][0],
                                                 pcl_data[indice][1],
-                                                pcl_data[indice][2],
-                                                pcl_helper.rgb_to_float(cluster_color[j])])
+                                                pcl_data[indice][2]
+                                                ])
 
         cluster_cloud = pcl.PointCloud()
         cluster_cloud.from_list(color_cluster_point_list)
@@ -104,7 +103,7 @@ class pcl_data_calc():
         mls.set_polynomial_fit(True)
         mls.set_Search_Method(tree)
         mls.set_search_radius(100)
-        print('set parameters')
+        # print('set parameters')
         mls_points = mls.process()
 
         return mls_points
