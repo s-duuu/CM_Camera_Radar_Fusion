@@ -7,6 +7,7 @@ project(yolov5_ros)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -120,7 +121,8 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
 # include
-  ${catkin_INCLUDE_DIRS}
+  include ${PCL_INCLUDE_DIR}
+  include ${catkin_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -136,7 +138,7 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/yolov5_ros_node.cpp)
+# add_executable(${PROJECT_NAME}_node radar_processing/radar_parser.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -151,6 +153,7 @@ include_directories(
 ## Specify libraries to link a library or executable target against
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
+#   yolov5_ros ${PCL_LIBRARIES}
 # )
 
 #############
@@ -163,7 +166,7 @@ include_directories(
 ## Mark executable scripts (Python etc.) for installation
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
-  src/detect.py src/detector.py image_processing/image_parser.py radar_processing/pcl_parser.py
+  src/detect.py src/detector.py scripts/image_processing/image_parser.py scripts/radar_processing/pcl_parser.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

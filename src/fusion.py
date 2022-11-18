@@ -2,15 +2,10 @@ import rospy
 import math
 import cv2
 
-from image_processing.image_parser import image_data_calc
-from radar_processing.pcl_parser import pcl_data_calc
+from scripts.image_processing.image_parser import image_data_calc
+from scripts.radar_processing.pcl_parser import pcl_data_calc
 from detector import Yolov5Detector
 from dataclasses import dataclass
-
-@dataclass
-class fusion_object:
-    index: int = None
-    distance: int = None
     
 
 class fusion(image_data_calc, pcl_data_calc, Yolov5Detector):
@@ -31,11 +26,11 @@ class fusion(image_data_calc, pcl_data_calc, Yolov5Detector):
         
     def euclidean_distance(self, camera_index, radar_index):
         
-        camera_r = self.camera_object_list[camera_index].distance
-        camera_theta = self.camera_object_list[camera_index].azimuth
+        camera_r = self.camera_object_list[camera_index]["distance"]
+        camera_theta = self.camera_object_list[camera_index]["azimuth"]
         
-        radar_r = self.radar_object_list[radar_index].distance
-        radar_theta = self.radar_object_list[radar_index].azimuth
+        radar_r = self.radar_object_list[radar_index]["distance"]
+        radar_theta = self.radar_object_list[radar_index]["azimuth"]
         
         camera_coord = (camera_r * math.sin(camera_theta), camera_r * math.cos(camera_theta))
         radar_coord = (radar_r * math.sin(radar_theta), radar_r * math.cos(radar_theta))
@@ -58,14 +53,14 @@ class fusion(image_data_calc, pcl_data_calc, Yolov5Detector):
             cost_val_list = []
             
             for radar_object in radar_object_list:
-                cost_val = self.distance_weight * abs(camera_object.distance - radar_object.distance)\
-                            + self.azimuth_weight * abs(camera_object.azimuth - radar_object.azimuth)
+                cost_val = self.distance_weight * abs(camera_object["distance"] - radar_object["distance"])\
+                            + self.azimuth_weight * abs(camera_object["azimuth"] - radar_object["azimuth"])
                 
                 cost_val_list.append(cost_val)
             
             min_radar_idx = cost_val_list.index(min(cost_val_list))
             
-            first_best_candidate.append((camera_object.index, min_radar_idx))
+            first_best_candidate.append((camera_object["index"], min_radar_idx))
             
         # 2nd for loop
         for radar_object in radar_object_list:
@@ -73,14 +68,14 @@ class fusion(image_data_calc, pcl_data_calc, Yolov5Detector):
             cost_val_list = []
             
             for camera_object in camera_object_list:
-                cost_val = self.distance_weight * abs(camera_object.distance - radar_object.distance)\
-                            + self.azimuth_weight * abs(camera_object.azimuth - radar_object.azimuth)
+                cost_val = self.distance_weight * abs(camera_object["distance"] - radar_object["distance"])\
+                            + self.azimuth_weight * abs(camera_object["azimuth"] - radar_object["azimuth"])
             
                 cost_val_list.append(cost_val)
             
             min_camera_idx = cost_val_list.index(min(cost_val_list))
             
-            second_best_candidate.append((min_camera_idx, radar_object.index))
+            second_best_candidate.append((min_camera_idx, radar_object["index"]))
         
         
         first_set = set(first_best_candidate)
@@ -100,13 +95,13 @@ class fusion(image_data_calc, pcl_data_calc, Yolov5Detector):
     def fusion(self):
         
         for candidate in self.best_candidate:
-            conf = self.camera_object_list[candidate[0]].confidence
+            conf = self.camera_object_list[candidate[0]]["confidence"]
             camera_weight = self.camera_weight_min + ((conf - self.conf_threshold) / (1 - self.conf_threshold)) * (self.camera_weight_max - self.camera_weight_min)
             radar_weight = 1 - camera_weight
             
-            camera_idx = self.camera_object_list[candidate[0]].index
-            radar_idx = self.radar_object_list[candidate[1]].index
-            fusion_distance = camera_weight * self.camera_object_list[candidate[0]].distance + radar_weight * self.radar_object_list[candidate[1]].distance
+            camera_idx = self.camera_object_list[candidate[0]]["index"]
+            radar_idx = self.radar_object_list[candidate[1]]["index"]
+            fusion_distance = camera_weight * self.camera_object_list[candidate[0]]["distance"] + radar_weight * self.radar_object_list[candidate[1]]["distance"]
             
             self.fusion_index_list.append((camera_idx, radar_idx))
             self.fusion_distance_list.append(fusion_distance)
@@ -158,7 +153,6 @@ class fusion(image_data_calc, pcl_data_calc, Yolov5Detector):
             cv2.rectangle(frames, (xmin, ymin), (xmax, ymax), (0,0,255), 5, 1)
             cv2.rectangle(frames, (0, 0), (self.image.shape[1], self.image.shape[0]), (0,0,255), 50, 1)
         
-        
         cv2.namedWindow("Display", cv2.WND_PROP_FULLSCREEN)
         cv2.setWindowProperty("Display", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         
@@ -167,5 +161,6 @@ class fusion(image_data_calc, pcl_data_calc, Yolov5Detector):
 
 # Main function
 if __name__ == '__main__':
+
     fusion()
             

@@ -1,17 +1,15 @@
-from dataclasses import dataclass
+a = {"index": None, "distance": None, "speed": None}
 
-@dataclass
-class object:
-    index:int = None
-    distance:int = None
+a["index"] = 3
 
+b = {"index": None, "distance": None, "speed": None}
 
-if __name__ == '__main__':
-    object_list = []
-    for i in range(5):
-        var = object()
-        var.index = 5 - i
-        var.distance = i
-        object_list.append(var)
-    
-    print(min(object_list))
+b["distance"] = 10
+
+dic_list = []
+
+dic_list.append(a)
+
+dic_list.append(b)
+
+print(dic_list[0]["index"])

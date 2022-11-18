@@ -9,6 +9,22 @@
 
 # Author: Harsh Pandya
 
+"""
+# Modified by Anshul Paigwar
+# @email: p.anshul6@gmail.com
+#
+# Added new funtions:
+# array_to_pointcloud2
+# xyzrgb_array_to_pointcloud2
+# .
+# .
+# .
+Reference:
+https://www.programcreek.com/python/example/99841/sensor_msgs.msg.PointCloud2
+"""
+
+
+
 # Import modules
 import rospy
 import pcl
@@ -24,9 +40,7 @@ from random import randint
 
 def random_color_gen():
     """ Generates a random color
-
         Args: None
-
         Returns:
             list: 3 elements, R, G, and B
     """
@@ -38,17 +52,15 @@ def random_color_gen():
 
 def ros_to_pcl(ros_cloud):
     """ Converts a ROS PointCloud2 message to a pcl PointXYZRGB
-
         Args:
             ros_cloud (PointCloud2): ROS PointCloud2 message
-
         Returns:
             pcl.PointCloud_PointXYZRGB: PCL XYZRGB point cloud
     """
     points_list = []
 
     for data in pc2.read_points(ros_cloud, skip_nans=True):
-        points_list.append([data[0], data[1], data[2], data[3]])
+        points_list.append([data[0], data[1], data[2], 0])
 
     pcl_data = pcl.PointCloud_PointXYZRGB()
     pcl_data.from_list(points_list)
@@ -58,17 +70,15 @@ def ros_to_pcl(ros_cloud):
 
 def pcl_to_ros(pcl_array):
     """ Converts a pcl PointXYZRGB to a ROS PointCloud2 message
-
         Args:
             pcl_array (PointCloud_PointXYZRGB): A PCL XYZRGB point cloud
-
         Returns:
             PointCloud2: A ROS point cloud
     """
     ros_msg = PointCloud2()
 
     ros_msg.header.stamp = rospy.Time.now()
-    ros_msg.header.frame_id = "world"
+    ros_msg.header.frame_id = "RARS00"
 
     ros_msg.height = 1
     ros_msg.width = pcl_array.size
@@ -95,7 +105,6 @@ def pcl_to_ros(pcl_array):
     ros_msg.row_step = ros_msg.point_step * ros_msg.width * ros_msg.height
     ros_msg.is_dense = False
     buffer = []
-
     for data in pcl_array:
         s = struct.pack('>f', data[3])
         i = struct.unpack('>l', s)[0]
@@ -107,17 +116,15 @@ def pcl_to_ros(pcl_array):
 
         buffer.append(struct.pack('ffffBBBBIII', data[0], data[1], data[2], 1.0, b, g, r, 0, 0, 0, 0))
 
-    ros_msg.data = "".join(buffer)
+    ros_msg.data = b"".join(buffer)
 
     return ros_msg
 
 
 def XYZRGB_to_XYZ(XYZRGB_cloud):
     """ Converts a PCL XYZRGB point cloud to an XYZ point cloud (removes color info)
-
         Args:
             XYZRGB_cloud (PointCloud_PointXYZRGB): A PCL XYZRGB point cloud
-
         Returns:
             PointCloud_PointXYZ: A PCL XYZ point cloud
     """
@@ -133,14 +140,11 @@ def XYZRGB_to_XYZ(XYZRGB_cloud):
 
 def XYZ_to_XYZRGB(XYZ_cloud, color):
     """ Converts a PCL XYZ point cloud to a PCL XYZRGB point cloud
-
         All returned points in the XYZRGB cloud will be the color indicated
         by the color parameter.
-
         Args:
             XYZ_cloud (PointCloud_XYZ): A PCL XYZ point cloud
             color (list): 3-element list of integers [0-255,0-255,0-255]
-
         Returns:
             PointCloud_PointXYZRGB: A PCL XYZRGB point cloud
     """
@@ -158,14 +162,11 @@ def XYZ_to_XYZRGB(XYZ_cloud, color):
 
 def rgb_to_float(color):
     """ Converts an RGB list to the packed float format used by PCL
-
         From the PCL docs:
         "Due to historical reasons (PCL was first developed as a ROS package),
          the RGB information is packed into an integer and casted to a float"
-
         Args:
             color (list): 3-element list of integers [0-255,0-255,0-255]
-
         Returns:
             float_rgb: RGB value packed as a float
     """
@@ -182,10 +183,8 @@ def rgb_to_float(color):
 
 def float_to_rgb(float_rgb):
     """ Converts a packed float RGB format to an RGB list
-
         Args:
             float_rgb: RGB value packed as a float
-
         Returns:
             color (list): 3-element list of integers [0-255,0-255,0-255]
     """
@@ -204,10 +203,8 @@ def float_to_rgb(float_rgb):
 
 def get_color_list(cluster_count):
     """ Returns a list of randomized colors
-
         Args:
             cluster_count (int): Number of random colors to generate
-
         Returns:
             (list): List containing 3-element color lists
     """

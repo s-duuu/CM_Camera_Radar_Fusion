@@ -12,10 +12,10 @@ def createFolder(directory):
 
 class image_capture:
     def __init__(self, frame_divide):
-        self.img_cnt = 0
-        self.cnt = 0
+        self.img_cnt = 578
+        self.cnt = 578
         self.folder_name = "/home/heven/CoDeep_ws/src/yolov5_ros/image_processing/" + str(ctime(time()))
-        self.video_path = "/home/heven/CoDeep_ws/src/yolov5_ros/image_processing/video/test1.mp4"
+        self.video_path = "/home/heven/CoDeep_ws/src/yolov5_ros/image_processing/video/test2.mp4"
         createFolder(self.folder_name)
         self.capture(frame_divide)
     

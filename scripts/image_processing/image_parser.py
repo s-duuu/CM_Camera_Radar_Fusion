@@ -1,26 +1,12 @@
+#!/usr/bin/env python
+
 import rospy
 import math
 
-from msg import BoundingBoxes
-from detector import Yolov5Detector
-from dataclasses import dataclass
-
-@dataclass
-class object:
-    index: int = None
-    distance: float = None
-    azimuth: float = None
-    confidence: float = None
-
-@dataclass
-class boundingbox:
-    xmin: int = None
-    ymin: int = None
-    xmax: int = None
-    ymax: int = None
+from yolov5_ros.msg import BoundingBoxes
     
 
-class image_data_calc(Yolov5Detector):
+class image_data_calc():
     def __init__(self):
         rospy.init_node('ImageParser', anonymous=False)
         rospy.Subscriber('yolov5/detections', BoundingBoxes, self.image_callback)
@@ -44,20 +30,24 @@ class image_data_calc(Yolov5Detector):
         # Image Distance & Azimuth Calculation
         for bbox in bbox_list:
             if bbox.probability > self.conf_threshold:
-                camera_object = object()
-                camera_object.index = cnt
+                camera_object = {"index": None, "distance": None, "azimuth": None, "confidence": None}
+                camera_object["index"] = cnt
                 direct_distance = self.image_distance_calc(bbox)
                 azimuth = self.image_azimuth_calc(bbox, direct_distance)
                 distance = direct_distance * math.cos(azimuth * math.pi / 180) - self.rear_to_camera
-                camera_object.distance = distance
-                camera_object.azimuth = azimuth
-                camera_object.confidence = bbox.probability
+
+                print("Distance check :", distance)
+                print("Azimuth check : ", azimuth)
+
+                camera_object["distance"] = distance
+                camera_object["azimuth"] = azimuth
+                camera_object["confidence"] = bbox.probability
                 
-                bounding_box = boundingbox()
-                bounding_box.xmin = bbox.xmin
-                bounding_box.ymin = bbox.ymin
-                bounding_box.xmax = bbox.xmax
-                bounding_box.ymax = bbox.ymax
+                bounding_box = {"xmin": None, "ymin": None, "xmax": None, "ymax": None}
+                bounding_box["xmin"] = bbox.xmin
+                bounding_box["ymin"] = bbox.ymin
+                bounding_box["xmax"] = bbox.xmax
+                bounding_box["ymax"] = bbox.ymax
                 
                 self.camera_object_list.append(camera_object)
                 self.bounding_box_list.append(bounding_box)
@@ -76,7 +66,7 @@ class image_data_calc(Yolov5Detector):
         height = abs(ymax - ymin)
         
         # Position-based distance estimation
-        distance = self.camera_height * math.tan((math.pi/2 - math.atan((self.image.shape[0]/2 - (self.image.shape[0] - ymax)) * 2*math.tan(self.vertical_FOV*math.pi/360)/self.image.shape[0])))
+        distance = self.camera_height * math.tan((math.pi/2 - math.atan((720/2 - (720 - ymax)) * 2*math.tan(self.vertical_FOV*math.pi/360)/720)))
         
         return distance
     

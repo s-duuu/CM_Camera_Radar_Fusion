@@ -12,7 +12,7 @@ import sys
 from rostopic import get_topic_type
 
 from sensor_msgs.msg import Image, CompressedImage
-from msg import BoundingBox, BoundingBoxes
+from yolov5_ros.msg import BoundingBox, BoundingBoxes
 
 
 # add yolov5 submodule to path
@@ -100,7 +100,6 @@ class Yolov5Detector:
         
         # Initialize CV_Bridge
         self.bridge = CvBridge()
-        self.image = np.array()
 
     def callback(self, data):
         """adapted from yolov5/detect.py"""
@@ -112,6 +111,8 @@ class Yolov5Detector:
         
         self.image = im
         im, im0 = self.preprocess(im)
+
+        print("image shape check : ", self.image.shape)
         # print(im.shape)
         # print(img0.shape)
         # print(img.shape)

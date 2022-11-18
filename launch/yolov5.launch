@@ -19,7 +19,7 @@
     <arg name="view_image"            default="true"/>
 
     <!-- ROS topics -->
-    <arg name="input_image_topic"       default="/image_jpeg/compressed"/>
+    <arg name="input_image_topic"       default="/carmaker_vds_client_node/image_raw/compressed"/>
     <arg name="output_topic"            default="/yolov5/detections"/>
 
     <!-- Optional topic (publishing annotated image) -->
@@ -27,7 +27,7 @@
     <arg name="output_image_topic"      default="/yolov5/image_out"/>
 
 
-    <node pkg="co_deep_project" name="detector" type="detector.py" output="screen">
+    <node pkg="yolov5_ros" name="detector" type="detector.py" output="screen">
         <param name="weights"               value="$(arg weights)"/>
         <param name="data"                  value="$(arg data)"/>
         <param name="confidence_threshold"  value="$(arg confidence_threshold)"/>
