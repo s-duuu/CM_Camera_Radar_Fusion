@@ -55,7 +55,9 @@ add_message_files(
   BoundingBox.msg
   BoundingBoxes.msg
   CameraObject.msg
+  CameraObjectList.msg
   RadarObject.msg
+  RadarObjectList.msg
 )
 
 ## Generate services in the 'srv' folder

@@ -2,14 +2,21 @@ import rospy
 import math
 import cv2
 
-from scripts.image_processing.image_parser import image_data_calc
-from scripts.radar_processing.pcl_parser import pcl_data_calc
 from detector import Yolov5Detector
-from dataclasses import dataclass
-    
 
-class fusion(image_data_calc, pcl_data_calc, Yolov5Detector):
+from yolov5_ros.msg import BoundingBoxes
+from yolov5_ros.msg import BoundingBox
+from yolov5_ros.msg import CameraObjectList
+from yolov5_ros.msg import RadarObjectList
+
+
+class fusion(Yolov5Detector):
     def __init__(self):
+        rospy.init_node('camera_object_sub', anonymous=False)
+        rospy.Subscriber('camera_objects', CameraObjectList, self.camera_object_callback)
+        rospy.init_node('radar_object_sub', anonymous=False)
+        rospy.Subscriber('radar_objects', RadarObjectList, self.radar_object_callback)
+        
         self.fusion_index_list = []
         self.fusion_distance_list = []
         self.best_candidate = []
@@ -23,7 +30,13 @@ class fusion(image_data_calc, pcl_data_calc, Yolov5Detector):
         
         self.visualize()
         
+    def camera_object_callback(self, data):
+        self.camera_object_list = data.CameraObjectList
+        self.bounding_box_list = data.BoundingBoxList
         
+    def radar_object_callback(self, data):
+        self.radar_object_list = data.RadarObjectList
+    
     def euclidean_distance(self, camera_index, radar_index):
         
         camera_r = self.camera_object_list[camera_index]["distance"]
@@ -96,7 +109,7 @@ class fusion(image_data_calc, pcl_data_calc, Yolov5Detector):
         
         for candidate in self.best_candidate:
             conf = self.camera_object_list[candidate[0]]["confidence"]
-            camera_weight = self.camera_weight_min + ((conf - self.conf_threshold) / (1 - self.conf_threshold)) * (self.camera_weight_max - self.camera_weight_min)
+            camera_weight = self.camera_weight_min + ((conf - 0.8) / (1 - 0.8)) * (self.camera_weight_max - self.camera_weight_min)
             radar_weight = 1 - camera_weight
             
             camera_idx = self.camera_object_list[candidate[0]]["index"]
@@ -111,7 +124,7 @@ class fusion(image_data_calc, pcl_data_calc, Yolov5Detector):
         
         crash_time = 1000*distance / (3600*((1-math.sin(85*math.pi/180))*self.my_speed + velocity))
         
-        lane_change_time = self.lane_width / (self.my_speed * math.cos(85*math.pi/180))
+        lane_change_time = 3.5 / (self.my_speed * math.cos(85*math.pi/180))
         
         # Ok to change lane
         if crash_time - lane_change_time > 3:

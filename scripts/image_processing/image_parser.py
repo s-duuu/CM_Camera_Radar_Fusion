@@ -4,10 +4,14 @@ import rospy
 import math
 
 from yolov5_ros.msg import BoundingBoxes
-    
+from yolov5_ros.msg import BoundingBox
+from yolov5_ros.msg import CameraObject
+from yolov5_ros.msg import CameraObjectList
 
 class image_data_calc():
     def __init__(self):
+        self.camera_object_pub = rospy.Publisher('camera_objects', CameraObjectList, queue_size=10)
+        
         rospy.init_node('ImageParser', anonymous=False)
         rospy.Subscriber('yolov5/detections', BoundingBoxes, self.image_callback)
         
@@ -20,40 +24,51 @@ class image_data_calc():
         self.vertical_FOV = 28
         self.car_width = 1.97
         self.rear_to_camera = 2.5
-        self.camera_object_list = []
-        self.bounding_box_list = []
+        
+        Objects = CameraObjectList()
+        
+        Objects.BoundingBoxList = BoundingBoxes()
+        Objects.BoundingBoxList.header = data.header
+        Objects.BoundingBoxList.image_header = data.image_header
         
         bbox_list = data.bounding_boxes
+        
         cnt = 0
         self.conf_threshold = 0.8
         
         # Image Distance & Azimuth Calculation
         for bbox in bbox_list:
             if bbox.probability > self.conf_threshold:
-                camera_object = {"index": None, "distance": None, "azimuth": None, "confidence": None}
-                camera_object["index"] = cnt
+                
+                camera_object = CameraObject()
+                camera_object.index = cnt
+                
                 direct_distance = self.image_distance_calc(bbox)
                 azimuth = self.image_azimuth_calc(bbox, direct_distance)
                 distance = direct_distance * math.cos(azimuth * math.pi / 180) - self.rear_to_camera
 
+                
                 print("Distance check :", distance)
                 print("Azimuth check : ", azimuth)
 
-                camera_object["distance"] = distance
-                camera_object["azimuth"] = azimuth
-                camera_object["confidence"] = bbox.probability
+                camera_object.distance = distance
+                camera_object.azimuth = azimuth
+                camera_object.confidence = bbox.probability
                 
-                bounding_box = {"xmin": None, "ymin": None, "xmax": None, "ymax": None}
-                bounding_box["xmin"] = bbox.xmin
-                bounding_box["ymin"] = bbox.ymin
-                bounding_box["xmax"] = bbox.xmax
-                bounding_box["ymax"] = bbox.ymax
+                bounding_box = BoundingBox()
+                bounding_box.Class = bbox.Class
+                bounding_box.probability = bbox.probability
+                bounding_box.xmin = bbox.xmin
+                bounding_box.ymin = bbox.ymin
+                bounding_box.xmax = bbox.xmax
+                bounding_box.ymax = bbox.ymax
                 
-                self.camera_object_list.append(camera_object)
-                self.bounding_box_list.append(bounding_box)
+                Objects.CameraObjectList.append(camera_object)
+                Objects.BoundingBoxList.bounding_boxes.append(bounding_box)
                 
                 cnt += 1
 
+        self.camera_object_pub.publish(Objects)
         
     
     def image_distance_calc(self, bbox):
