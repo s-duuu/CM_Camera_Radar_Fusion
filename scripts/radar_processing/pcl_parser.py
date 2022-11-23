@@ -7,13 +7,16 @@ import pcl_helper
 
 import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
+from yolov5_ros.msg import RadarObject
+from yolov5_ros.msg import RadarObjectList
 
 class pcl_data_calc():
     def __init__(self):
         rospy.init_node('PclParser', anonymous=False)
         rospy.Subscriber('/pointcloud/radar', PointCloud2, self.pcl_callback)
 
-        self.pub = rospy.Publisher('/pointcloud/filtered', PointCloud2, queue_size=1)
+        self.radar_filtered_pub = rospy.Publisher('/pointcloud/filtered', PointCloud2, queue_size=1)
+        self.radar_object_pub = rospy.Publisher('radar_objects', RadarObjectList, queue_size=1)
         
     
     def pcl_callback(self, data):
@@ -24,20 +27,24 @@ class pcl_data_calc():
         self.xmax = 4.0
         self.mean_k = 1
         # 파라미터 수정
-        self.thresh = 0.0005
+        self.thresh = 0.0003
         self.raw_list = []
         self.velocity_list = []
+        self.cnt = 0
         # Convert sensor_msgs/PointCloud2 -> pcl
         cloud = pcl_helper.ros_to_pcl(data)
         
         for cloud_data in cloud:
             self.raw_list.append([cloud_data[0], cloud_data[1], cloud_data[2]])
             self.velocity_list.append(cloud_data[3])
+            print(cloud_data[3]*1000/3600)
+        
+        print("-----------")
         
         if cloud.size > 0:
 
             # ROI setting
-            cloud = self.do_passthrough(cloud, 'y', 1.75, 5)
+            cloud = self.do_passthrough(cloud, 'y', 2.25, 4.5)
 
             if cloud.size > 0:
                 # Removing noise
@@ -50,12 +57,38 @@ class pcl_data_calc():
                     xyz_cloud, _ = self.do_euclidean_clustering(xyz_cloud)
                 # Removing ground
                 # _, _, cloud = self.do_ransac_plane_normal_segmentation(cloud, 0.05)
-                
-                cloud = pcl_helper.XYZ_to_XYZRGB(xyz_cloud, self.raw_list, self.velocity_list)
-            
+                Objects = RadarObjectList()
+
+                filtered_cloud = pcl_helper.XYZ_to_XYZRGB(xyz_cloud, self.raw_list, self.velocity_list)
+
+                # Converting into radar object message type
+                for filtered_data in filtered_cloud:
+                    x = filtered_data[0]
+                    y = filtered_data[1]
+                    z = filtered_data[2]
+                    velocity = filtered_data[3]
+
+                    print(velocity*1000/3600)
+
+                    index = self.cnt
+                    distance = x
+                    azimuth = math.atan(y/x)*180/math.pi
+
+                    object_variable = RadarObject()
+                    object_variable.index = index
+                    object_variable.distance = distance
+                    object_variable.azimuth = azimuth
+                    object_variable.velocity = velocity
+
+                    Objects.RadarObjectList.append(object_variable)
+
+                    self.cnt += 1
+
+                self.radar_object_pub.publish(Objects)
+            print("===============")
             # Convert pcl -> sensor_msgs/PointCloud2
             new_data = pcl_helper.pcl_to_ros(cloud)
-            self.pub.publish(new_data)
+            self.radar_filtered_pub.publish(new_data)
             # rospy.loginfo("Filtered Point Published")
             # print("---Check---")
             # print(new_data)
