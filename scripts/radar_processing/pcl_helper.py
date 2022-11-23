@@ -60,7 +60,7 @@ def ros_to_pcl(ros_cloud):
     points_list = []
 
     for data in pc2.read_points(ros_cloud, skip_nans=True):
-        points_list.append([data[0], data[1], data[2], 0])
+        points_list.append([data[0], data[1], data[2], data[3]])
 
     pcl_data = pcl.PointCloud_PointXYZRGB()
     pcl_data.from_list(points_list)
@@ -96,25 +96,25 @@ def pcl_to_ros(pcl_array):
                             offset=8,
                             datatype=PointField.FLOAT32, count=1))
     ros_msg.fields.append(PointField(
-                            name="rgb",
-                            offset=16,
+                            name="velocity",
+                            offset=12,
                             datatype=PointField.FLOAT32, count=1))
 
     ros_msg.is_bigendian = False
-    ros_msg.point_step = 32
+    ros_msg.point_step = 16
     ros_msg.row_step = ros_msg.point_step * ros_msg.width * ros_msg.height
     ros_msg.is_dense = False
     buffer = []
     for data in pcl_array:
-        s = struct.pack('>f', data[3])
-        i = struct.unpack('>l', s)[0]
-        pack = ctypes.c_uint32(i).value
+        # s = struct.pack('>f', data[3])
+        # i = struct.unpack('>l', s)[0]
+        # pack = ctypes.c_uint32(i).value
 
-        r = (pack & 0x00FF0000) >> 16
-        g = (pack & 0x0000FF00) >> 8
-        b = (pack & 0x000000FF)
+        # r = (pack & 0x00FF0000) >> 16
+        # g = (pack & 0x0000FF00) >> 8
+        # b = (pack & 0x000000FF)
 
-        buffer.append(struct.pack('ffffBBBBIII', data[0], data[1], data[2], 1.0, b, g, r, 0, 0, 0, 0))
+        buffer.append(struct.pack('ffff', data[0], data[1], data[2], data[3]))
 
     ros_msg.data = b"".join(buffer)
 
@@ -138,7 +138,7 @@ def XYZRGB_to_XYZ(XYZRGB_cloud):
     return XYZ_cloud
 
 
-def XYZ_to_XYZRGB(XYZ_cloud, color):
+def XYZ_to_XYZRGB(XYZ_cloud, raw_list, velocity_list):
     """ Converts a PCL XYZ point cloud to a PCL XYZRGB point cloud
         All returned points in the XYZRGB cloud will be the color indicated
         by the color parameter.
@@ -151,10 +151,11 @@ def XYZ_to_XYZRGB(XYZ_cloud, color):
     XYZRGB_cloud = pcl.PointCloud_PointXYZRGB()
     points_list = []
 
-    float_rgb = rgb_to_float(color)
+    # float_rgb = rgb_to_float(color)
 
     for data in XYZ_cloud:
-        points_list.append([data[0], data[1], data[2], float_rgb])
+        
+        points_list.append([data[0], data[1], data[2], velocity_list[raw_list.index([data[0], data[1], data[2]])]])
 
     XYZRGB_cloud.from_list(points_list)
     return XYZRGB_cloud

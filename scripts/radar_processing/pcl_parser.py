@@ -14,16 +14,26 @@ class pcl_data_calc():
         rospy.Subscriber('/pointcloud/radar', PointCloud2, self.pcl_callback)
 
         self.pub = rospy.Publisher('/pointcloud/filtered', PointCloud2, queue_size=1)
+        
     
     def pcl_callback(self, data):
-        
+        # print("---------Data----------")
+        # print(data)
         # Parameters for ROI setting and Removing noise
         self.xmin = 3.0
         self.xmax = 4.0
         self.mean_k = 1
+        # 파라미터 수정
         self.thresh = 0.0005
+        self.raw_list = []
+        self.velocity_list = []
         # Convert sensor_msgs/PointCloud2 -> pcl
         cloud = pcl_helper.ros_to_pcl(data)
+        
+        for cloud_data in cloud:
+            self.raw_list.append([cloud_data[0], cloud_data[1], cloud_data[2]])
+            self.velocity_list.append(cloud_data[3])
+        
         if cloud.size > 0:
 
             # ROI setting
@@ -31,22 +41,25 @@ class pcl_data_calc():
 
             if cloud.size > 0:
                 # Removing noise
-                cloud = pcl_helper.XYZRGB_to_XYZ(cloud)
-                cloud = self.do_moving_least_squares(cloud)
+                xyz_cloud = pcl_helper.XYZRGB_to_XYZ(cloud)
+
+                xyz_cloud = self.do_moving_least_squares(xyz_cloud)
                 
-                if cloud.size > 0:
-                    cloud = self.do_statistical_outlier_filtering(cloud, self.mean_k, self.thresh)
-                    cloud, _ = self.do_euclidean_clustering(cloud)
+                if xyz_cloud.size > 0:
+                    xyz_cloud = self.do_statistical_outlier_filtering(xyz_cloud, self.mean_k, self.thresh)
+                    xyz_cloud, _ = self.do_euclidean_clustering(xyz_cloud)
                 # Removing ground
                 # _, _, cloud = self.do_ransac_plane_normal_segmentation(cloud, 0.05)
-                cloud = pcl_helper.XYZ_to_XYZRGB(cloud, (255,255,255))
+                
+                cloud = pcl_helper.XYZ_to_XYZRGB(xyz_cloud, self.raw_list, self.velocity_list)
             
             # Convert pcl -> sensor_msgs/PointCloud2
-            
             new_data = pcl_helper.pcl_to_ros(cloud)
             self.pub.publish(new_data)
-            rospy.loginfo("Filtered Point Published")
-        
+            # rospy.loginfo("Filtered Point Published")
+            # print("---Check---")
+            # print(new_data)
+
         else:
             pass
     
@@ -72,9 +85,14 @@ class pcl_data_calc():
         tree = pcl_data.make_kdtree()
 
         ec = pcl_data.make_EuclideanClusterExtraction()
+
+        # 점 사이 거리 (cm)
         ec.set_ClusterTolerance(0.01)
+        # 점 개수
         ec.set_MinClusterSize(1)
+        # 점 개수
         ec.set_MaxClusterSize(4)
+        
         ec.set_SearchMethod(tree)
         cluster_indices = ec.Extract()
 
@@ -102,7 +120,8 @@ class pcl_data_calc():
         mls.set_Compute_Normals(True)
         mls.set_polynomial_fit(True)
         mls.set_Search_Method(tree)
-        mls.set_search_radius(100)
+        # 파라미터 수정 (m 단위)
+        mls.set_search_radius(10)
         # print('set parameters')
         mls_points = mls.process()
 
