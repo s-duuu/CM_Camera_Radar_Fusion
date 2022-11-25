@@ -112,7 +112,7 @@ class Yolov5Detector:
         self.image = im
         im, im0 = self.preprocess(im)
 
-        print("image shape check : ", self.image.shape)
+        # print("image shape check : ", self.image.shape)
         # print(im.shape)
         # print(img0.shape)
         # print(img.shape)

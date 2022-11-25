@@ -23,7 +23,7 @@
     <arg name="output_topic"            default="/yolov5/detections"/>
 
     <!-- Optional topic (publishing annotated image) -->
-    <arg name="publish_image"           default="false"/>
+    <arg name="publish_image"           default="true"/>
     <arg name="output_image_topic"      default="/yolov5/image_out"/>
 
 
@@ -50,6 +50,9 @@
         <param name="publish_image"         value="$(arg publish_image)"/>
         <param name="output_image_topic"    value="$(arg output_image_topic)"/>
     </node>
+
+    <node pkg="yolov5_ros" name="fusion_node" type="fusion.py" output="screen"/>
+
     <!-- <include file="$(find camera_launch)/launch/d435.launch"/> -->
 
 
