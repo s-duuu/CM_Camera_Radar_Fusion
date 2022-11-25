@@ -37,7 +37,8 @@ class pcl_data_calc():
         for cloud_data in cloud:
             self.raw_list.append([cloud_data[0], cloud_data[1], cloud_data[2]])
             self.velocity_list.append(cloud_data[3])
-            print(cloud_data[3]*1000/3600)
+            # print(cloud_data[3]*1000/3600)
+
         
         print("-----------")
         
@@ -85,6 +86,7 @@ class pcl_data_calc():
                     self.cnt += 1
 
                 self.radar_object_pub.publish(Objects)
+                print(Objects)
             print("===============")
             # Convert pcl -> sensor_msgs/PointCloud2
             new_data = pcl_helper.pcl_to_ros(cloud)

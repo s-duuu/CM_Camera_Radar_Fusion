@@ -19,9 +19,9 @@ class fusion():
         self.best_candidate = []
         self.distance_weight = 0.5
         self.azimuth_weight = 0.5
-        self.euclidean_threshold = 0.1
-        self.camera_weight_min = 0.2
-        self.camera_weight_max = 0.4
+        self.euclidean_threshold = 1
+        self.camera_weight_min = 0.4
+        self.camera_weight_max = 0.7
         self.radar_weight = 0.7
         self.my_speed = 0
         self.camera_object_list = []
@@ -37,7 +37,7 @@ class fusion():
         
     def camera_object_callback(self, data):
         self.camera_object_list = data.CameraObjectList
-        self.bounding_box_list = data.BoundingBoxList
+        self.bounding_box_list = data.BoundingBoxList.bounding_boxes
         
     def radar_object_callback(self, data):
         self.radar_object_list = data.RadarObjectList
@@ -61,10 +61,14 @@ class fusion():
     def matching(self):
         camera_object_list = self.camera_object_list
         radar_object_list = self.radar_object_list
+
+        print("Camera Object List : ", camera_object_list)
+        print("Radar Object List : ", radar_object_list)
         
         first_best_candidate = []
         second_best_candidate = []
         
+        # Camera Object O & Radar Object O
         if len(camera_object_list) != 0 and len(radar_object_list) != 0:
             # 1st for loop
             for camera_object in camera_object_list:
@@ -110,6 +114,14 @@ class fusion():
             # Call fusion function
             self.fusion()
         
+
+        # Only Camera Object
+        elif len(camera_object_list) != 0 and len(radar_object_list) == 0:
+            for camera_object in camera_object_list:
+                self.fusion_index_list.append(camera_object.index)
+                self.fusion_distance_list.append(camera_object.distance)
+
+        
         
     def fusion(self):
         
@@ -146,6 +158,9 @@ class fusion():
     
     
     def visualize(self, data):
+
+        self.fusion_index_list = []
+        self.fusion_distance_list = []
         
         self.image = self.bridge.imgmsg_to_cv2(data, desired_encoding="bgr8")
 
@@ -154,26 +169,47 @@ class fusion():
         self.matching()
         
         
-        if len(self.fusion_index_list) != 0 and len(self.fusion_distance_list) != 0:
+        if len(self.camera_object_list) != 0 and len(self.radar_object_list) != 0:
+            print("----------------Camera O Radar O----------------", len(self.camera_object_list), len(self.radar_object_list))
+            print("Fusion Index : ", self.fusion_index_list)
+            print("Distance : ", self.fusion_distance_list)
             closest_camera_idx = self.fusion_index_list[self.fusion_distance_list.index(min(self.fusion_distance_list))][0]
             closest_radar_idx = self.fusion_index_list[self.fusion_distance_list.index(min(self.fusion_distance_list))][1]
             
             closest_distance = min(self.fusion_distance_list)
             closest_velocity = self.radar_object_list[closest_radar_idx].velocity
             
-            xmin, ymin, xmax, ymax = self.bounding_box_list[closest_camera_idx]
+            # xmin, ymin, xmax, ymax = self.bounding_box_list[closest_camera_idx]
             
-            if self.Risk_calculate(closest_distance, closest_velocity) == 0:
-                cv2.rectangle(self.image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 5, 1)
+            # if self.Risk_calculate(closest_distance, closest_velocity) == 0:
+            #     cv2.rectangle(self.image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 5, 1)
             
             if self.Risk_calculate(closest_distance, closest_velocity) == 1:
-                cv2.rectangle(self.image, (xmin, ymin), (xmax, ymax), (0,130,255), 5, 1)
+                # cv2.rectangle(self.image, (xmin, ymin), (xmax, ymax), (0,130,255), 5, 1)
                 cv2.rectangle(self.image, (0, 0), (self.image.shape[1], self.image.shape[0]), (0,130,255), 50, 1)
                 
             elif self.Risk_calculate(closest_distance, closest_velocity) == 2:
-                cv2.rectangle(self.image, (xmin, ymin), (xmax, ymax), (0,0,255), 5, 1)
+                # cv2.rectangle(self.image, (xmin, ymin), (xmax, ymax), (0,0,255), 5, 1)
                 cv2.rectangle(self.image, (0, 0), (self.image.shape[1], self.image.shape[0]), (0,0,255), 50, 1)
         
+        elif len(self.camera_object_list) != 0 and len(self.radar_object_list) == 0:
+            print("----------------Camera O----------------")
+            closest_camera_idx = self.fusion_index_list[self.fusion_distance_list.index(min(self.fusion_distance_list))]
+            closest_distance = min(self.fusion_distance_list)
+
+            # xmin, ymin, xmax, ymax = self.bounding_box_list[closest_camera_idx]
+
+            # if closest_distance > 15:
+            #     cv2.rectangle(self.image, (xmin, ymin), (xmax, ymax), (0, 255, 0), 5, 1)
+            
+            if closest_distance <= 15 and closest_distance > 5:
+                # cv2.rectangle(self.image, (xmin, ymin), (xmax, ymax), (0,130,255), 5, 1)
+                cv2.rectangle(self.image, (0, 0), (self.image.shape[1], self.image.shape[0]), (0,130,255), 50, 1)
+            
+            if closest_distance <= 5:
+                # cv2.rectangle(self.image, (xmin, ymin), (xmax, ymax), (0,0,255), 5, 1)
+                cv2.rectangle(self.image, (0, 0), (self.image.shape[1], self.image.shape[0]), (0,0,255), 50, 1)
+
         # cv2.namedWindow("Display", cv2.WND_PROP_FULLSCREEN)
         # cv2.setWindowProperty("Display", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         
