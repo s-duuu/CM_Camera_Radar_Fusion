@@ -47,9 +47,10 @@ class image_data_calc():
                 azimuth = self.image_azimuth_calc(bbox, direct_distance)
                 distance = direct_distance * math.cos(azimuth * math.pi / 180) - self.rear_to_camera
 
-                
+                print("Direct distance check : ", direct_distance)
                 print("Distance check :", distance)
                 print("Azimuth check : ", azimuth)
+                print("==========================")
 
                 camera_object.distance = distance
                 camera_object.azimuth = azimuth
@@ -81,8 +82,11 @@ class image_data_calc():
         height = abs(ymax - ymin)
         
         # Position-based distance estimation
-        distance = self.camera_height * math.tan((math.pi/2 - math.atan((720/2 - (720 - ymax)) * 2*math.tan(self.vertical_FOV*math.pi/360)/720)))
+        # distance = self.camera_height * math.tan((math.pi/2 - math.atan((720/2 - (720 - ymax)) * 2*math.tan(self.vertical_FOV*math.pi/360)/720)))
         
+        # Width-based distance estimation
+        focal_length = 720 / (2*math.tan(math.radians(self.vertical_FOV / 2)))
+        distance = focal_length*1.82/width
         return distance
     
     def image_azimuth_calc(self, bbox, distance):

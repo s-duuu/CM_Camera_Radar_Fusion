@@ -51,7 +51,7 @@
         <param name="output_image_topic"    value="$(arg output_image_topic)"/>
     </node>
 
-    <node pkg="yolov5_ros" name="fusion_node" type="fusion.py" output="screen"/>
+    <node pkg="yolov5_ros" name="fusion_node" type="matrix_fusion.py" output="screen"/>
 
     <!-- <include file="$(find camera_launch)/launch/d435.launch"/> -->
 

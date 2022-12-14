@@ -20,13 +20,14 @@ class fusion():
         self.distance_weight = 0.5
         self.azimuth_weight = 0.5
         self.euclidean_threshold = 1
-        self.camera_weight_min = 0.4
-        self.camera_weight_max = 0.7
+        self.camera_weight_min = 0.1
+        self.camera_weight_max = 0.2
         self.radar_weight = 0.7
         self.my_speed = 0
         self.camera_object_list = []
         self.bounding_box_list = []
         self.radar_object_list = []
+        self.only_camera_distance_list = []
         self.bridge = CvBridge()
 
         rospy.init_node('fusion_node', anonymous=False)
@@ -62,8 +63,8 @@ class fusion():
         camera_object_list = self.camera_object_list
         radar_object_list = self.radar_object_list
 
-        print("Camera Object List : ", camera_object_list)
-        print("Radar Object List : ", radar_object_list)
+        # print("Camera Object List : ", camera_object_list)
+        # print("Radar Object List : ", radar_object_list)
         
         first_best_candidate = []
         second_best_candidate = []
@@ -72,6 +73,8 @@ class fusion():
         if len(camera_object_list) != 0 and len(radar_object_list) != 0:
             # 1st for loop
             for camera_object in camera_object_list:
+
+                print("Camera Distance : ", camera_object.distance)
         
                 cost_val_list = []
                 
@@ -84,9 +87,13 @@ class fusion():
                 min_radar_idx = cost_val_list.index(min(cost_val_list))
                 
                 first_best_candidate.append((camera_object.index, min_radar_idx))
-                
+            
+            print("-------------------------")
+
             # 2nd for loop
             for radar_object in radar_object_list:
+
+                print("Radar Distance : ", radar_object.distance)
                 
                 cost_val_list = []
                 
@@ -108,6 +115,7 @@ class fusion():
             
             # Removing uncertain candidates (using euclidean distance) : Should be revised!!!!!
             for candidate in self.best_candidate:
+                # print("Candidates index : ", candidate[0], candidate[1])
                 if self.euclidean_distance(candidate[0], candidate[1]) > self.euclidean_threshold:
                     self.best_candidate.remove(candidate)
             
@@ -118,8 +126,8 @@ class fusion():
         # Only Camera Object
         elif len(camera_object_list) != 0 and len(radar_object_list) == 0:
             for camera_object in camera_object_list:
-                self.fusion_index_list.append(camera_object.index)
-                self.fusion_distance_list.append(camera_object.distance)
+                self.only_camera_distance_list.append(camera_object.distance)
+        
 
         
         
@@ -140,7 +148,7 @@ class fusion():
     
     def Risk_calculate(self, distance, velocity):
         
-        crash_time = 1000*distance / (3600*((1-math.sin(85*math.pi/180))*self.my_speed + velocity))
+        crash_time = 1000 * distance / (3600*((1-math.sin(85*math.pi/180))*self.my_speed + velocity))
         
         lane_change_time = 3.5 / (self.my_speed * math.cos(85*math.pi/180))
         
@@ -164,15 +172,15 @@ class fusion():
         
         self.image = self.bridge.imgmsg_to_cv2(data, desired_encoding="bgr8")
 
-        # print(type(self.image))
+        # print(self.image.shape)
         
         self.matching()
         
         
-        if len(self.camera_object_list) != 0 and len(self.radar_object_list) != 0:
-            print("----------------Camera O Radar O----------------", len(self.camera_object_list), len(self.radar_object_list))
-            print("Fusion Index : ", self.fusion_index_list)
-            print("Distance : ", self.fusion_distance_list)
+        if len(self.fusion_index_list) != 0 and len(self.fusion_distance_list) != 0:
+            # print("----------------Camera O Radar O----------------", len(self.camera_object_list), len(self.radar_object_list))
+            # print("Fusion Index : ", self.fusion_index_list)
+            # print("Distance : ", self.fusion_distance_list)
             closest_camera_idx = self.fusion_index_list[self.fusion_distance_list.index(min(self.fusion_distance_list))][0]
             closest_radar_idx = self.fusion_index_list[self.fusion_distance_list.index(min(self.fusion_distance_list))][1]
             
@@ -193,9 +201,9 @@ class fusion():
                 cv2.rectangle(self.image, (0, 0), (self.image.shape[1], self.image.shape[0]), (0,0,255), 50, 1)
         
         elif len(self.camera_object_list) != 0 and len(self.radar_object_list) == 0:
-            print("----------------Camera O----------------")
-            closest_camera_idx = self.fusion_index_list[self.fusion_distance_list.index(min(self.fusion_distance_list))]
-            closest_distance = min(self.fusion_distance_list)
+            # print("----------------Camera O----------------")
+            # closest_camera_idx = self.fusion_index_list[self.fusion_distance_list.index(min(self.fusion_distance_list))]
+            closest_distance = min(self.only_camera_distance_list)
 
             # xmin, ymin, xmax, ymax = self.bounding_box_list[closest_camera_idx]
 

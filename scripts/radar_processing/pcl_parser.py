@@ -40,7 +40,7 @@ class pcl_data_calc():
             # print(cloud_data[3]*1000/3600)
 
         
-        print("-----------")
+        # print("-----------")
         
         if cloud.size > 0:
 
@@ -69,16 +69,22 @@ class pcl_data_calc():
                     z = filtered_data[2]
                     velocity = filtered_data[3]
 
-                    print(velocity*1000/3600)
+                    # print("x type : ", type(x))
+                    # print("y type : ", type(y))
+                    # print("z type : ", type(z))
+                    # print("velocity type : ", type(velocity))
+                    # print(velocity*1000/3600)
 
-                    index = self.cnt
-                    distance = x
-                    azimuth = math.atan(y/x)*180/math.pi
+                    file.write("%f %f %f %f\n" % (x, y, z, velocity))
+
+                    # index = self.cnt
+                    # distance = x
+                    # azimuth = math.atan(y/x)*180/math.pi
 
                     object_variable = RadarObject()
-                    object_variable.index = index
-                    object_variable.distance = distance
-                    object_variable.azimuth = azimuth
+                    object_variable.x = x
+                    object_variable.y = y
+                    object_variable.z = z
                     object_variable.velocity = velocity
 
                     Objects.RadarObjectList.append(object_variable)
@@ -86,7 +92,7 @@ class pcl_data_calc():
                     self.cnt += 1
 
                 self.radar_object_pub.publish(Objects)
-                print(Objects)
+                # print(Objects)
             print("===============")
             # Convert pcl -> sensor_msgs/PointCloud2
             new_data = pcl_helper.pcl_to_ros(cloud)
@@ -94,6 +100,8 @@ class pcl_data_calc():
             # rospy.loginfo("Filtered Point Published")
             # print("---Check---")
             # print(new_data)
+        
+            
 
         else:
             pass
@@ -185,8 +193,10 @@ class pcl_data_calc():
 
 if __name__ == '__main__':
     try:
+        file = open("/home/heven/CoDeep_ws/src/yolov5_ros/scripts/radar_processing/data", 'w')
         pcl_data_calc()
         rospy.spin()
+        file.close()
     
     except rospy.ROSInterruptException:
         pass
