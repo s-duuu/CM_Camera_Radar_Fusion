@@ -35,8 +35,8 @@ class fusion():
         self.radar_object_list = data.RadarObjectList
     
     def inverse_transform(self):
-        intrinsic_matrix = np.array([[2400, 0, 640], [0, 2400, 360], [0, 0, 1]])
-        projection_matrix = np.array([[math.cos(math.radians(80)), 0, math.sin(math.radians(80)), -2.5], [-math.sin(math.radians(80)), 0, math.cos(math.radians(80)), 1], [0, -1, 0, 0.5]])        
+        intrinsic_matrix = np.array([[640/math.tan(0.5*math.radians(50)), 0, 640], [0, 480/math.tan(0.5*math.radians(14)), 480], [0, 0, 1]])
+        projection_matrix = np.array([[math.cos(math.radians(80)), -math.sin(math.radians(80)), 0, -2.3], [0, 0, -1, 1], [math.sin(math.radians(80)), math.cos(math.radians(80)), 0, 0.5]])        
 
         inverse_matrix = lin.pinv(intrinsic_matrix @ projection_matrix)
 
@@ -55,13 +55,18 @@ class fusion():
             world_matrix /= scaling
 
             print("------Result------")
-            print("X value : ", world_matrix[0][0])
-            print("Y value : ", world_matrix[1][0])
-            print("Z value : ", world_matrix[2][0])
+            print("Transformed X value : ", world_matrix[0][0])
+
+            if len(self.radar_object_list) != 0:
+                for radar_object in self.radar_object_list:
+                    print("Radar X value : ", radar_object.x)
+                    print("X distance : ", abs(world_matrix[0][0] - radar_object.x))
+            # print("Y value : ", world_matrix[1][0])
+            # print("Z value : ", world_matrix[2][0])
     
     def transform(self):
-        intrinsic_matrix = np.array([[2400, 0, 640], [0, 2400, 360], [0, 0, 1]])
-        projection_matrix = np.array([[math.cos(math.radians(80)), 0, math.sin(math.radians(80)), -2.5], [-math.sin(math.radians(80)), 0, math.cos(math.radians(80)), 1], [0, -1, 0, 0.5]])
+        intrinsic_matrix = np.array([[640/math.tan(0.5*math.radians(50)), 0, 640], [0, 480/math.tan(0.5*math.radians(14)), 480], [0, 0, 1]])
+        projection_matrix = np.array([[math.cos(math.radians(80)), -math.sin(math.radians(80)), 0, -2.3], [0, 0, -1, 1], [math.sin(math.radians(80)), math.cos(math.radians(80)), 0, 0.5]])
         
         for radar_object in self.radar_object_list:
             world_point = np.array([[radar_object.x], [radar_object.y], [radar_object.z], [1]])
@@ -85,6 +90,7 @@ class fusion():
 
         # print(self.image.shape)
 
+        # self.transform()
         self.inverse_transform()
 
         cv2.imshow("Display", self.image)

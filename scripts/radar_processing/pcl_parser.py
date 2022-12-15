@@ -75,7 +75,7 @@ class pcl_data_calc():
                     # print("velocity type : ", type(velocity))
                     # print(velocity*1000/3600)
 
-                    file.write("%f %f %f %f\n" % (x, y, z, velocity))
+                    # file.write("%f %f %f %f\n" % (x, y, z, velocity))
 
                     # index = self.cnt
                     # distance = x
@@ -193,10 +193,10 @@ class pcl_data_calc():
 
 if __name__ == '__main__':
     try:
-        file = open("/home/heven/CoDeep_ws/src/yolov5_ros/scripts/radar_processing/data", 'w')
+        # file = open("/home/heven/CoDeep_ws/src/yolov5_ros/scripts/radar_processing/data", 'w')
         pcl_data_calc()
         rospy.spin()
-        file.close()
+        # file.close()
     
     except rospy.ROSInterruptException:
         pass
