@@ -58,9 +58,34 @@ class fusion():
             print("Transformed X value : ", world_matrix[0][0])
 
             if len(self.radar_object_list) != 0:
+                min_value = abs(world_matrix[0][0] - self.radar_object_list[0].x)
+                min_idx = 0
+                idx_cnt = 0
                 for radar_object in self.radar_object_list:
                     print("Radar X value : ", radar_object.x)
-                    print("X distance : ", abs(world_matrix[0][0] - radar_object.x))
+                    # print("X distance : ", abs(world_matrix[0][0] - radar_object.x))
+
+                    if abs(world_matrix[0][0] - radar_object.x) < min_value:
+                        min_value = abs(world_matrix[0][0] - radar_object.x)
+                        min_idx = idx_cnt
+
+                    idx_cnt += 1
+                
+                transform_estimated = intrinsic_matrix @ projection_matrix @ world_matrix
+
+                scaling = transform_estimated[2][0]
+
+                transform_estimated /= scaling
+
+                v_estimated = round(transform_estimated[0][0])
+                x_estimated = self.radar_object_list[min_idx].x
+                correction = (y - v_estimated) / 960 * x_estimated
+
+                x += correction
+
+                print("Corrected X value : ", x)
+                
+                
             # print("Y value : ", world_matrix[1][0])
             # print("Z value : ", world_matrix[2][0])
     
