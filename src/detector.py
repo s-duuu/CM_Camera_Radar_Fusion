@@ -60,7 +60,7 @@ class Yolov5Detector:
         )
 
         # Setting inference size
-        self.img_size = [rospy.get_param("~inference_size_w", 640), rospy.get_param("~inference_size_h",480)]
+        self.img_size = [rospy.get_param("~inference_size_w", 1280), rospy.get_param("~inference_size_h",960)]
         self.img_size = check_img_size(self.img_size, s=self.stride)
 
         # Half

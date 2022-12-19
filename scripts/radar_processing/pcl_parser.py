@@ -47,29 +47,29 @@ class pcl_data_calc():
             # ROI setting
             cloud = self.do_passthrough(cloud, 'y', 2.25, 4.5)
             # 변경 사항 시작
-            Objects = RadarObjectList()
-            for point_data in cloud:
-                x = point_data[0]
-                y = point_data[1]
-                z = point_data[2]
-                velocity = point_data[3]
+            # Objects = RadarObjectList()
+            # for point_data in cloud:
+            #     x = point_data[0]
+            #     y = point_data[1]
+            #     z = point_data[2]
+            #     velocity = point_data[3]
                 
-                object_variable = RadarObject()
-                object_variable.x = x
-                object_variable.y = y
-                object_variable.z = z
-                object_variable.velocity = velocity
+            #     object_variable = RadarObject()
+            #     object_variable.x = x
+            #     object_variable.y = y
+            #     object_variable.z = z
+            #     object_variable.velocity = velocity
 
-                Objects.RadarObjectList.append(object_variable)
+            #     Objects.RadarObjectList.append(object_variable)
             
-            self.radar_object_pub.publish(Objects)
+            # self.radar_object_pub.publish(Objects)
             # 변경 사항 끝
 
             if cloud.size > 0:
                 # Removing noise
                 xyz_cloud = pcl_helper.XYZRGB_to_XYZ(cloud)
 
-                xyz_cloud = self.do_moving_least_squares(xyz_cloud)
+                # xyz_cloud = self.do_moving_least_squares(xyz_cloud)
                 
                 if xyz_cloud.size > 0:
                     xyz_cloud = self.do_statistical_outlier_filtering(xyz_cloud, self.mean_k, self.thresh)
@@ -105,23 +105,23 @@ class pcl_data_calc():
                     # distance = x
                     # azimuth = math.atan(y/x)*180/math.pi
 
-                    # object_variable = RadarObject()
-                    # object_variable.x = x
-                    # object_variable.y = y
-                    # object_variable.z = z
-                    # object_variable.velocity = velocity
+                    object_variable = RadarObject()
+                    object_variable.x = x
+                    object_variable.y = y
+                    object_variable.z = z
+                    object_variable.velocity = velocity
 
-                    # Objects.RadarObjectList.append(object_variable)
+                    Objects.RadarObjectList.append(object_variable)
 
                     self.cnt += 1
 
-                # self.radar_object_pub.publish(Objects)
+                self.radar_object_pub.publish(Objects)
                 # print(Objects)
             print("===============")
             # Convert pcl -> sensor_msgs/PointCloud2
             new_data = pcl_helper.pcl_to_ros(cloud)
-            # self.radar_filtered_pub.publish(new_data)
-            # rospy.loginfo("Filtered Point Published")
+            self.radar_filtered_pub.publish(new_data)
+            rospy.loginfo("Filtered Point Published")
             # print("---Check---")
             # print(new_data)
         

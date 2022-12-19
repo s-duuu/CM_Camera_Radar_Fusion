@@ -12,8 +12,8 @@
     <arg name="half"                  default="false"/>
     
     <!-- replace imgsz -->
-    <arg name="inference_size_h"      default="640"/>
-    <arg name="inference_size_w"      default="640"/>
+    <arg name="inference_size_h"      default="960"/>
+    <arg name="inference_size_w"      default="1280"/>
     
     <!-- Visualize using OpenCV window -->
     <arg name="view_image"            default="true"/>
