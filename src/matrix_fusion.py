@@ -39,7 +39,7 @@ class fusion():
         intrinsic_matrix = np.array([[640/math.tan(0.5*math.radians(50)), 0, 640], [0, 640/math.tan(0.5*math.radians(50)), 480], [0, 0, 1]])
         # intrinsic_matrix = np.array([[640/math.tan(0.5*math.radians(50)), 0, 640], [0, 640/math.tan(0.5*math.radians(40.9)), 480], [0, 0, 1]])
         # intrinsic_matrix = np.array([[640/math.tan(0.5*math.radians(50)), 0, 640], [0, 480/math.tan(0.5*math.radians(14)), 480], [0, 0, 1]])
-        projection_matrix = np.array([[math.cos(math.radians(80)), -math.sin(math.radians(80)), 0, -2.3], [0, 0, -1, 1], [math.sin(math.radians(80)), math.cos(math.radians(80)), 0, 0.5]])
+        projection_matrix = np.array([[0.1736, -0.9848, 0, 1.3842], [0, 0, -1, 0.5], [0.9848, 0.1736, 0, 2.0914]])
         
         inverse_matrix = lin.pinv(intrinsic_matrix @ projection_matrix)
 
@@ -49,7 +49,7 @@ class fusion():
 
             image_matrix = np.array([[x], [y], [1]])
             
-            print("------Result------")
+            print("====================================================================")
             
             world_matrix = inverse_matrix @ image_matrix
 
@@ -57,18 +57,20 @@ class fusion():
 
             scaling = world_matrix[3][0]
 
-            world_matrix /= scaling
+            # world_matrix /= scaling
 
-            # print(world_matrix)
+            print(world_matrix)
             
             if len(self.radar_object_list) != 0:
                 for radar_object in self.radar_object_list:
                     print("Transformed X value : ", world_matrix[0][0])
-                    print("Radar X value : ", radar_object.x)
                     print("Transformed Y value : ", world_matrix[1][0])
-                    print("Radar Y value : ", radar_object.y)
                     print("Transformed Z value : ", world_matrix[2][0])
+                    print("--------------------------------")
+                    print("Radar X value : ", radar_object.x)
+                    print("Radar Y value : ", radar_object.y)
                     print("Radar Z value : ", radar_object.z)
+                    print("-------------------------------------------------------------")
             
                     # transformed_matrix = intrinsic_matrix @ projection_matrix @ world_matrix
 
@@ -96,15 +98,16 @@ class fusion():
         # intrinsic_matrix = np.array([[800/math.tan(math.radians(25)), 0, 640], [0, 800/math.tan(math.radians(25)), 480], [0, 0, 1]])
         # intrinsic_matrix = np.array([[640/math.tan(0.5*math.radians(40.9)), 0, 640], [0, 480/math.tan(0.5*math.radians(31.3)), 480], [0, 0, 1]])
         intrinsic_matrix = np.array([[640/math.tan(0.5*math.radians(50)), 0, 640], [0, 640/math.tan(0.5*math.radians(50)), 480], [0, 0, 1]])
-        projection_matrix = np.array([[math.cos(math.radians(80)), -math.sin(math.radians(80)), 0, -2.3], [0, 0, -1, 1], [math.sin(math.radians(80)), math.cos(math.radians(80)), 0, 0.5]])
+        # projection_matrix = np.array([[math.cos(math.radians(80)), -math.sin(math.radians(80)), 0, -2.3], [0, 0, -1, 1], [math.sin(math.radians(80)), math.cos(math.radians(80)), 0, 0.5]])
+        projection_matrix = np.array([[0.1736, -0.9848, 0, 1.3842], [0, 0, -1, 0.5], [0.9848, 0.1736, 0, 2.0914]])
 
-        print("=================================")
+        # print("=================================")
         for radar_object in self.radar_object_list:
 
             world_point = np.array([[radar_object.x], [radar_object.y], [radar_object.z], [1]])
             
-            print("X : ", radar_object.x)
-            print("Y : ", radar_object.y)
+            # print("X : ", radar_object.x)
+            # print("Y : ", radar_object.y)
 
             transformed_matrix = intrinsic_matrix @ projection_matrix @ world_point
 
@@ -116,15 +119,15 @@ class fusion():
             x = round(transformed_matrix[0][0])
             y = round(transformed_matrix[1][0])
 
-            print("Integer Point : ", x, y)
-            print("--------------------------------")
+            # print("Integer Point : ", x, y)
+            # print("--------------------------------")
             cv2.line(self.image, (x,y), (x,y), (0, 255, 0), 15)
 
     def transformation_demo(self):
         # intrinsic_matrix = np.array([[2400, 0, 640], [0, 2400, 480], [0, 0, 1]])
 
         # Rt = np.array([[math.cos(math.radians(80)), -math.sin(math.radians(80)), 0], [0, 0, -1], [math.sin(math.radians(80)), math.cos(math.radians(80)), 0]]).T
-        Rt = np.array([[math.cos(math.radians(80)), 0, math.sin(math.radians(80))], [-math.sin(math.radians(80)), 0, math.cos(math.radians(80))], [0, -1, 0]])
+        Rt = np.array([[0.1736, -0.9848, 0], [0, 0, -1], [0.9848, 0.1736, 0]]).T
         
         for bbox in self.bounding_box_list:
             x = (bbox.xmin + bbox.xmax) / 2
@@ -139,7 +142,7 @@ class fusion():
 
             Pc = np.array([[u], [v], [1]])
 
-            t = np.array([[-2.3], [1], [0.5]])
+            t = np.array([[1.3842], [0.5], [2.0914]])
 
             pw = Rt @ (Pc-t)
             cw = Rt @ (-t)
@@ -167,9 +170,9 @@ class fusion():
         # print(self.image.shape)
 
         
-        self.inverse_transform()
-        # self.transform()
-        # self.transformation_demo()
+        # self.inverse_transform()
+        self.transform()
+        self.transformation_demo()
 
         cv2.imshow("Display", self.image)
         cv2.waitKey(1)
