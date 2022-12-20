@@ -18,9 +18,12 @@ class fusion():
         self.bridge = CvBridge()
         self.fusion_index_list = []
         self.fusion_distance_list = []
-        self.camera_object_list = []
         self.radar_object_list = []
+        self.filtered_radar_object_list = []
         self.bounding_box_list = []
+        self.distance_thresh = 2
+        self.angle_thresh = 30
+        self.my_speed = 20
 
         rospy.init_node('fusion_node', anonymous=False)
         # rospy.Subscriber('camera_objects', CameraObjectList, self.camera_object_callback)
@@ -92,7 +95,7 @@ class fusion():
             # print("Y value : ", world_matrix[1][0])
             # print("Z value : ", world_matrix[2][0])
     
-    def transform(self):
+    def transform(self, radar_object):
         # fovY = 2*math.atan(640*math.tan(math.radians(25)) / 480)
         # vFOV = 2 * math.atan((0.5 * 960) / (0.5 * 1280 / math.tan(math.radians(25))))
         # intrinsic_matrix = np.array([[800/math.tan(math.radians(25)), 0, 640], [0, 800/math.tan(math.radians(25)), 480], [0, 0, 1]])
@@ -102,26 +105,22 @@ class fusion():
         projection_matrix = np.array([[0.1736, -0.9848, 0, 1.3842], [0, 0, -1, 0.5], [0.9848, 0.1736, 0, 2.0914]])
 
         # print("=================================")
-        for radar_object in self.radar_object_list:
+        
+        world_point = np.array([[radar_object.x], [radar_object.y], [radar_object.z], [1]])
 
-            world_point = np.array([[radar_object.x], [radar_object.y], [radar_object.z], [1]])
+        transformed_matrix = intrinsic_matrix @ projection_matrix @ world_point
+
+        scaling = transformed_matrix[2][0]
+
+        transformed_matrix /= scaling
+
+        x = round(transformed_matrix[0][0])
+        y = round(transformed_matrix[1][0])
+        
+        # cv2.line(self.image, (x,y), (x,y), (0, 255, 0), 15)
+
+        return (x,y)
             
-            # print("X : ", radar_object.x)
-            # print("Y : ", radar_object.y)
-
-            transformed_matrix = intrinsic_matrix @ projection_matrix @ world_point
-
-            scaling = transformed_matrix[2][0]
-
-            transformed_matrix /= scaling
-
-            # print("Float Point : ", transformed_matrix[0][0], transformed_matrix[1][0])
-            x = round(transformed_matrix[0][0])
-            y = round(transformed_matrix[1][0])
-
-            # print("Integer Point : ", x, y)
-            # print("--------------------------------")
-            cv2.line(self.image, (x,y), (x,y), (0, 255, 0), 15)
 
     def transformation_demo(self):
         # intrinsic_matrix = np.array([[2400, 0, 640], [0, 2400, 480], [0, 0, 1]])
@@ -150,18 +149,80 @@ class fusion():
             k = (cw[2][0] + 0.5) / (cw[2][0] - pw[2][0])
 
             world_point = cw + k*(pw-cw)
-            print("=============================================================")
+            # print("=============================================================")
+            # if len(self.radar_object_list) != 0:
+            #     for radar_object in self.radar_object_list:
+            #         # print("x point : ", world_point[0][0])
+            #         # print("y point : ", world_point[1][0])
+            #         # print("z point : ", world_point[2][0])
+            #         print(world_point)
+            #         print("----------------------------------")
+            #         print("radar x : ", radar_object.x)
+            #         print("radar y : ", radar_object.y)
+            #         print("radar z : ", radar_object.z)
+            #         print("-------------------------------------------------------------")
+
+            x_c = world_point[0][0]
+            y_c = world_point[1][0]
+
+            camera_object = (x_c, y_c)
+
             if len(self.radar_object_list) != 0:
-                for radar_object in self.radar_object_list:
-                    # print("x point : ", world_point[0][0])
-                    # print("y point : ", world_point[1][0])
-                    # print("z point : ", world_point[2][0])
-                    print(world_point)
-                    print("----------------------------------")
-                    print("radar x : ", radar_object.x)
-                    print("radar y : ", radar_object.y)
-                    print("radar z : ", radar_object.z)
-                    print("-------------------------------------------------------------")
+                for radar_objcet in self.radar_object_list:
+                    if (math.sqrt(((x_c - radar_objcet.x)**2) + ((y_c - radar_objcet.y)**2)) < self.distance_thresh) and math.degrees(abs(math.atan(x_c/y_c) - math.atan(radar_objcet.x/radar_objcet.y))) < self.angle_thresh:
+                        self.filtered_radar_object_list.append(radar_objcet)
+                        self.matching(camera_object)
+            
+
+    def matching(self, camera_object):
+        min_iou = math.inf
+        min_idx = 0
+        cnt = 0
+
+        if len(self.filtered_radar_object_list) != 0:
+            for radar_objcet in self.filtered_radar_object_list:
+                if math.sqrt((self.transform(radar_objcet)[0] - camera_object[0])**2 + (self.transform(radar_objcet)[1] - camera_object[1])**2) < min_iou:
+                    min_idx = cnt
+                    min_iou = math.sqrt((self.transform(radar_objcet)[0] - camera_object[0])**2 + (self.transform(radar_objcet)[1] - camera_object[1])**2)
+                
+                cnt += 1
+        
+        min_x = self.transform(self.filtered_radar_object_list[min_idx])[0]
+        min_y = self.transform(self.filtered_radar_object_list[min_idx])[1]
+        
+        cv2.line(self.image, (min_x, min_y), (min_x, min_y), (0, 255, 0), 15)
+        
+        final_distance = camera_object[0]
+        final_velocity = self.filtered_radar_object_list[min_idx].velocity
+        
+        print("Distance : ", final_distance)
+        print("Velocity : ", final_velocity)
+
+        self.risk_calculate(final_distance, final_velocity)
+
+    def risk_calculate(self, distance, velocity):
+        
+        crash_time = distance / velocity
+
+        print("Crash time : ", crash_time)
+        
+        lane_change_time = 3.5*3600 / (1000*self.my_speed * math.cos(math.radians(85)))
+
+        print("Lane change time : ", lane_change_time)
+
+        print("-----------------------------------------------")
+        
+        # Ok to change lane
+        if crash_time - lane_change_time > 4:
+            pass
+        
+        # Warning
+        elif crash_time - lane_change_time <= 4 and crash_time - lane_change_time > 3:
+            cv2.rectangle(self.image, (0, 0), (1280, 960), (0,130,255), 50, 1)
+        
+        # Dangerous
+        else:
+            cv2.rectangle(self.image, (0, 0), (1280, 960), (0,0,255), 50, 1)
 
     def visualize(self, data):
 
@@ -171,7 +232,7 @@ class fusion():
 
         
         # self.inverse_transform()
-        self.transform()
+        # self.transform()
         self.transformation_demo()
 
         cv2.imshow("Display", self.image)
