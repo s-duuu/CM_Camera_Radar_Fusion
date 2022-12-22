@@ -196,6 +196,7 @@ class fusion():
         final_velocity = self.filtered_radar_object_list[min_idx].velocity
         
         print("Distance : ", final_distance)
+        print("Radar distance : ", self.filtered_radar_object_list[min_idx].x)
         print("Velocity : ", final_velocity)
 
         self.risk_calculate(final_distance, final_velocity)

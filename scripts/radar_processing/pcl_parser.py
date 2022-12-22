@@ -45,7 +45,8 @@ class pcl_data_calc():
         if cloud.size > 0:
 
             # ROI setting
-            cloud = self.do_passthrough(cloud, 'y', 2.25, 4.5)
+            cloud = self.do_passthrough(cloud, 'x', 17, 19)
+            cloud = self.do_passthrough(cloud, 'y', 2.25, 3)
             # 변경 사항 시작
             # Objects = RadarObjectList()
             # for point_data in cloud:
@@ -76,14 +77,15 @@ class pcl_data_calc():
                     
                     if xyz_cloud.size > 0:
                         xyz_cloud, _ = self.do_euclidean_clustering(xyz_cloud)
+                    
                 # Removing ground
                 # _, _, cloud = self.do_ransac_plane_normal_segmentation(cloud, 0.05)
                 Objects = RadarObjectList()
 
-                filtered_cloud = pcl_helper.XYZ_to_XYZRGB(xyz_cloud, self.raw_list, self.velocity_list)
+                cloud = pcl_helper.XYZ_to_XYZRGB(xyz_cloud, self.raw_list, self.velocity_list)
 
                 # Converting into radar object message type
-                for filtered_data in filtered_cloud:
+                for filtered_data in cloud:
                     x = filtered_data[0]
                     y = filtered_data[1]
                     z = filtered_data[2]
@@ -92,6 +94,7 @@ class pcl_data_calc():
                     print("x : ", x)
                     print("y : ", y)
                     print("z : ", z)
+                    print("Velocity [km/h] : ", velocity*3.6)
 
                     # print("x type : ", type(x))
                     # print("y type : ", type(y))
@@ -139,7 +142,7 @@ class pcl_data_calc():
         return passthrough.filter()
     
     
-    def do_statistical_outlier_filtering(self, pcl_data,mean_k,thresh):
+    def do_statistical_outlier_filtering(self, pcl_data, mean_k, thresh):
         
         outlier_filter = pcl_data.make_statistical_outlier_filter()
         outlier_filter.set_mean_k(mean_k)
