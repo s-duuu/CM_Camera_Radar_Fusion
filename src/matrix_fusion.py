@@ -3,6 +3,8 @@
 import rospy
 import numpy as np
 import numpy.linalg as lin
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import math
 import cv2
 
@@ -37,6 +39,14 @@ class fusion():
     def radar_object_callback(self, data):
         self.radar_object_list = data.RadarObjectList
     
+    def is_in_bbox(self, bbox, radar_2d):
+        
+        if radar_2d[0] > bbox.xmin and radar_2d[0] < bbox.xmax and radar_2d[1] > bbox.ymin and radar_2d[1] < bbox.ymax:
+            return True
+        
+        else:
+            return False
+
     def inverse_transform(self):
         # vFOV = 2 * math.atan((0.5 * 960) / (0.5 * 1280 / math.tan(math.radians(25))))
         intrinsic_matrix = np.array([[640/math.tan(0.5*math.radians(50)), 0, 640], [0, 640/math.tan(0.5*math.radians(50)), 480], [0, 0, 1]])
@@ -167,14 +177,17 @@ class fusion():
 
             camera_object = (x_c, y_c)
 
-            if len(self.radar_object_list) != 0:
-                for radar_objcet in self.radar_object_list:
-                    if (math.sqrt(((x_c - radar_objcet.x)**2) + ((y_c - radar_objcet.y)**2)) < self.distance_thresh) and math.degrees(abs(math.atan(x_c/y_c) - math.atan(radar_objcet.x/radar_objcet.y))) < self.angle_thresh:
-                        self.filtered_radar_object_list.append(radar_objcet)
-                        self.matching(camera_object)
+            # self.first_matching(camera_object)
+            self.second_matching(bbox, camera_object)
             
 
-    def matching(self, camera_object):
+    def first_matching(self, camera_object):
+
+        if len(self.radar_object_list) != 0:
+            for radar_objcet in self.radar_object_list:
+                if (math.sqrt(((camera_object[0] - radar_objcet.x)**2) + ((camera_object[1] - radar_objcet.y)**2)) < self.distance_thresh) and math.degrees(abs(math.atan(camera_object[0]/camera_object[1]) - math.atan(radar_objcet.x/radar_objcet.y))) < self.angle_thresh:
+                    self.filtered_radar_object_list.append(radar_objcet)
+
         min_iou = math.inf
         min_idx = 0
         cnt = 0
@@ -200,6 +213,36 @@ class fusion():
         print("Velocity : ", final_velocity)
 
         self.risk_calculate(final_distance, final_velocity)
+    
+    def second_matching(self, bbox, camera_object):
+
+        if len(self.radar_object_list) != 0:
+            for radar_object in self.radar_object_list:
+                if self.is_in_bbox(bbox, self.transform(radar_object)) == True:
+                    self.filtered_radar_object_list.append(radar_object)
+                    cv2.line(self.image, self.transform(radar_object), self.transform(radar_object), (0, 255, 0), 15)
+        
+        min_iou = math.inf
+        min_idx = 0
+        cnt = 0
+
+        if len(self.filtered_radar_object_list) != 0:
+            for radar_object in self.filtered_radar_object_list:
+                if math.sqrt((radar_object.x - camera_object[0])**2 + (radar_object.y - camera_object[1])**2) < min_iou:
+                    min_idx = cnt
+                    min_iou = math.sqrt((radar_object.x - camera_object[0])**2 + (radar_object.y - camera_object[1])**2)
+                
+                cnt += 1
+        
+        final_distance = (camera_object[0] + self.filtered_radar_object_list[min_idx].x) / 2
+        final_velocity = self.filtered_radar_object_list[min_idx].velocity
+
+        print("Real distance : 15.52m")
+        print("Distance : ", final_distance)
+        print("Velocity : ", final_velocity)
+
+        self.risk_calculate(final_distance, final_velocity)
+
 
     def risk_calculate(self, distance, velocity):
         
@@ -207,7 +250,7 @@ class fusion():
 
         print("Crash time : ", crash_time)
         
-        lane_change_time = 3.5*3600 / (1000*self.my_speed * math.cos(math.radians(85)))
+        lane_change_time = 3.5 * 3600 / (1000*self.my_speed * math.cos(math.radians(85)))
 
         print("Lane change time : ", lane_change_time)
 
@@ -230,7 +273,6 @@ class fusion():
         self.image = self.bridge.imgmsg_to_cv2(data, desired_encoding="bgr8")
 
         # print(self.image.shape)
-
         
         # self.inverse_transform()
         # self.transform()
