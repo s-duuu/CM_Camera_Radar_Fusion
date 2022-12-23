@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 
 import rospy
+import time
+import os
 import numpy as np
 import numpy.linalg as lin
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import math
 import cv2
+import pandas as pd
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
@@ -17,13 +20,14 @@ from yolov5_ros.msg import RadarObjectList
 
 class fusion():
     def __init__(self):
+        
         self.bridge = CvBridge()
         self.fusion_index_list = []
         self.fusion_distance_list = []
         self.radar_object_list = []
         self.filtered_radar_object_list = []
         self.bounding_box_list = []
-        self.distance_thresh = 2
+        self.distance_thresh = 6
         self.angle_thresh = 30
         self.my_speed = 20
 
@@ -34,6 +38,8 @@ class fusion():
         rospy.Subscriber('/yolov5/image_out', Image, self.visualize)
 
     def camera_object_callback(self, data):
+        now = rospy.get_rostime()
+        rospy.loginfo("Time : %i", now.secs)
         self.bounding_box_list = data.bounding_boxes
 
     def radar_object_callback(self, data):
@@ -184,43 +190,50 @@ class fusion():
     def first_matching(self, camera_object):
 
         if len(self.radar_object_list) != 0:
-            for radar_objcet in self.radar_object_list:
-                if (math.sqrt(((camera_object[0] - radar_objcet.x)**2) + ((camera_object[1] - radar_objcet.y)**2)) < self.distance_thresh) and math.degrees(abs(math.atan(camera_object[0]/camera_object[1]) - math.atan(radar_objcet.x/radar_objcet.y))) < self.angle_thresh:
-                    self.filtered_radar_object_list.append(radar_objcet)
+            for radar_object in self.radar_object_list:
+                cv2.line(self.image, self.transform(radar_object), self.transform(radar_object), (0, 255, 0), 15)
+                # print("point distance : ", (math.sqrt(((camera_object[0] - radar_object.x)**2) + ((camera_object[1] - radar_object.y)**2))))
+                # print("point angle : ", math.degrees(abs(math.atan(camera_object[0]/camera_object[1]) - math.atan(radar_object.x/radar_object.y))))
+                if (math.sqrt(((camera_object[0] - radar_object.x)**2) + ((camera_object[1] - radar_object.y)**2)) < self.distance_thresh) and math.degrees(abs(math.atan(camera_object[0]/camera_object[1]) - math.atan(radar_object.x/radar_object.y))) < self.angle_thresh:
+                    self.filtered_radar_object_list.append(radar_object)
 
         min_iou = math.inf
         min_idx = 0
         cnt = 0
 
         if len(self.filtered_radar_object_list) != 0:
-            for radar_objcet in self.filtered_radar_object_list:
-                if math.sqrt((self.transform(radar_objcet)[0] - camera_object[0])**2 + (self.transform(radar_objcet)[1] - camera_object[1])**2) < min_iou:
+            for radar_object in self.filtered_radar_object_list:
+                
+                if math.sqrt((self.transform(radar_object)[0] - camera_object[0])**2 + (self.transform(radar_object)[1] - camera_object[1])**2) < min_iou:
                     min_idx = cnt
-                    min_iou = math.sqrt((self.transform(radar_objcet)[0] - camera_object[0])**2 + (self.transform(radar_objcet)[1] - camera_object[1])**2)
+                    min_iou = math.sqrt((self.transform(radar_object)[0] - camera_object[0])**2 + (self.transform(radar_object)[1] - camera_object[1])**2)
                 
                 cnt += 1
         
-        min_x = self.transform(self.filtered_radar_object_list[min_idx])[0]
-        min_y = self.transform(self.filtered_radar_object_list[min_idx])[1]
+            min_x = self.transform(self.filtered_radar_object_list[min_idx])[0]
+            min_y = self.transform(self.filtered_radar_object_list[min_idx])[1]
         
-        cv2.line(self.image, (min_x, min_y), (min_x, min_y), (0, 255, 0), 15)
+            cv2.line(self.image, (min_x, min_y), (min_x, min_y), (0, 255, 0), 15)
         
-        final_distance = camera_object[0]
-        final_velocity = self.filtered_radar_object_list[min_idx].velocity
-        
-        print("Distance : ", final_distance)
-        print("Radar distance : ", self.filtered_radar_object_list[min_idx].x)
-        print("Velocity : ", final_velocity)
+            final_distance = camera_object[0]
+            final_velocity = self.filtered_radar_object_list[min_idx].velocity
+            
+            print("Real distance : 15.52m")
+            print("Distance : ", final_distance)
+            # print("Radar distance : ", self.filtered_radar_object_list[min_idx].x)
+            print("Velocity : ", final_velocity * 3.6)
 
-        self.risk_calculate(final_distance, final_velocity)
+            self.risk_calculate(final_distance, final_velocity)
     
     def second_matching(self, bbox, camera_object):
-
+        
+        
         if len(self.radar_object_list) != 0:
             for radar_object in self.radar_object_list:
+                
                 if self.is_in_bbox(bbox, self.transform(radar_object)) == True:
                     self.filtered_radar_object_list.append(radar_object)
-                    cv2.line(self.image, self.transform(radar_object), self.transform(radar_object), (0, 255, 0), 15)
+                    # cv2.line(self.image, self.transform(radar_object), self.transform(radar_object), (0, 255, 0), 15)
         
         min_iou = math.inf
         min_idx = 0
@@ -234,39 +247,61 @@ class fusion():
                 
                 cnt += 1
         
-        final_distance = (camera_object[0] + self.filtered_radar_object_list[min_idx].x) / 2
-        final_velocity = self.filtered_radar_object_list[min_idx].velocity
+            cv2.line(self.image, self.transform(self.filtered_radar_object_list[min_idx]), self.transform(self.filtered_radar_object_list[min_idx]), (0, 255, 0), 15)
+        
+            if camera_object[0] > self.filtered_radar_object_list[min_idx].x:
+                final_distance = self.filtered_radar_object_list[min_idx].x
+             
+            else:
+                final_distance = (camera_object[0] + self.filtered_radar_object_list[min_idx].x) / 2
+            
+            final_velocity = self.filtered_radar_object_list[min_idx].velocity
 
-        print("Real distance : 15.52m")
+        else:
+            final_distance = camera_object[0]
+            # 카메라 속도 구현 설정해야함
+            final_velocity = 20 / 3.6
+        # print("Real distance : 15.52m")
+        print("Camera distance : ", camera_object[0])
+        only_camera_distance_list.append(camera_object[0])
+        print("Radar distance : ", self.filtered_radar_object_list[min_idx].x)
+        only_radar_distance_list.append(self.filtered_radar_object_list[min_idx].x)
         print("Distance : ", final_distance)
-        print("Velocity : ", final_velocity)
+        fusion_distance_list.append(final_distance)
+        print("Velocity : ", final_velocity * 3.6)
 
         self.risk_calculate(final_distance, final_velocity)
 
 
     def risk_calculate(self, distance, velocity):
         
-        crash_time = distance / velocity
-
-        print("Crash time : ", crash_time)
-        
-        lane_change_time = 3.5 * 3600 / (1000*self.my_speed * math.cos(math.radians(85)))
-
-        print("Lane change time : ", lane_change_time)
-
-        print("-----------------------------------------------")
-        
-        # Ok to change lane
-        if crash_time - lane_change_time > 4:
-            pass
-        
-        # Warning
-        elif crash_time - lane_change_time <= 4 and crash_time - lane_change_time > 3:
-            cv2.rectangle(self.image, (0, 0), (1280, 960), (0,130,255), 50, 1)
-        
-        # Dangerous
-        else:
+        if distance < 5:
             cv2.rectangle(self.image, (0, 0), (1280, 960), (0,0,255), 50, 1)
+        
+        else:
+            car_velocity = self.my_speed + velocity
+
+            crash_time = distance * 3600 / (1000 * (car_velocity - math.sin(math.radians(85))*self.my_speed))
+
+            print("Crash time : ", crash_time)
+            
+            lane_change_time = 3.5 * 3600 / (1000*self.my_speed * math.cos(math.radians(85)))
+
+            print("Lane change time : ", lane_change_time)
+
+            print("-----------------------------------------------")
+            
+            # Ok to change lane
+            if crash_time - lane_change_time >= 2.5 or self.my_speed > car_velocity:
+                pass
+            
+            # Warning
+            elif crash_time - lane_change_time < 2.5 and crash_time - lane_change_time >= 1.5:
+                cv2.rectangle(self.image, (0, 0), (1280, 960), (0,130,255), 50, 1)
+            
+            # Dangerous
+            else:
+                cv2.rectangle(self.image, (0, 0), (1280, 960), (0,0,255), 50, 1)
 
     def visualize(self, data):
 
@@ -282,9 +317,15 @@ class fusion():
         cv2.waitKey(1)
 
 if __name__ == '__main__':
-    try:
+    only_camera_distance_list = []
+    only_radar_distance_list = []
+    fusion_distance_list = []
+    if not rospy.is_shutdown():
         fusion()
         rospy.spin()
+    
+    
+    os.chdir('/home/heven/CoDeep_ws/src/yolov5_ros/src/csv')
+    df = pd.DataFrame({'Camera': only_camera_distance_list, 'Radar': only_radar_distance_list, 'Fusion': fusion_distance_list})        
 
-    except rospy.ROSInterruptException:
-        pass
+    df.to_csv("distance.csv", index=True)

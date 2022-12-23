@@ -45,7 +45,7 @@ class pcl_data_calc():
         if cloud.size > 0:
 
             # ROI setting
-            cloud = self.do_passthrough(cloud, 'x', 17, 19)
+            # cloud = self.do_passthrough(cloud, 'x', 17, 19)
             cloud = self.do_passthrough(cloud, 'y', 2.25, 3)
             # 변경 사항 시작
             # Objects = RadarObjectList()
