@@ -260,17 +260,20 @@ class fusion():
         else:
             final_distance = camera_object[0]
             # 카메라 속도 구현 설정해야함
-            final_velocity = 20 / 3.6
+            final_velocity = 5 / 3.6
         # print("Real distance : 15.52m")
         print("Camera distance : ", camera_object[0])
         only_camera_distance_list.append(camera_object[0])
-        print("Radar distance : ", self.filtered_radar_object_list[min_idx].x)
+        # print("Radar distance : ", self.filtered_radar_object_list[min_idx].x)
         only_radar_distance_list.append(self.filtered_radar_object_list[min_idx].x)
-        print("Distance : ", final_distance)
+        # print("Distance : ", final_distance)
         fusion_distance_list.append(final_distance)
-        print("Velocity : ", final_velocity * 3.6)
+        # print("Velocity[km/h] : ", final_velocity * 3.6)
+        velocity_list.append(final_velocity)
+        
+        print("-----------------------")
 
-        self.risk_calculate(final_distance, final_velocity)
+        # self.risk_calculate(final_distance, final_velocity)
 
 
     def risk_calculate(self, distance, velocity):
@@ -320,12 +323,19 @@ if __name__ == '__main__':
     only_camera_distance_list = []
     only_radar_distance_list = []
     fusion_distance_list = []
+    velocity_list = []
     if not rospy.is_shutdown():
         fusion()
         rospy.spin()
     
     
     os.chdir('/home/heven/CoDeep_ws/src/yolov5_ros/src/csv')
-    df = pd.DataFrame({'Camera': only_camera_distance_list, 'Radar': only_radar_distance_list, 'Fusion': fusion_distance_list})        
+    # df = pd.DataFrame({'Camera': only_camera_distance_list, 'Radar': only_radar_distance_list, 'Fusion': fusion_distance_list, 'Distance' : velocity_list})        
 
-    df.to_csv("distance.csv", index=True)
+    # df.to_csv("distance.csv", index=True)
+
+    # df = pd.DataFrame({'Fusion' : fusion_distance_list})
+    df2 = pd.DataFrame({'Velocity' : velocity_list})
+
+    # df.to_csv("fusion_distance.csv", index=False)
+    df2.to_csv("veclocity.csv", index=False)

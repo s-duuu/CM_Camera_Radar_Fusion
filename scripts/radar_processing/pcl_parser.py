@@ -4,6 +4,7 @@ import rospy
 import pcl
 import math
 import pcl_helper
+import kalman_filter
 
 import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
@@ -25,9 +26,9 @@ class pcl_data_calc():
         # Parameters for ROI setting and Removing noise
         self.xmin = 3.0
         self.xmax = 4.0
-        self.mean_k = 1
+        self.mean_k = 3
         # 파라미터 수정
-        self.thresh = 0.0003
+        self.thresh = 0.00001
         self.raw_list = []
         self.velocity_list = []
         self.cnt = 0
@@ -45,8 +46,7 @@ class pcl_data_calc():
         if cloud.size > 0:
 
             # ROI setting
-            # cloud = self.do_passthrough(cloud, 'x', 17, 19)
-            cloud = self.do_passthrough(cloud, 'y', 2.25, 3)
+            cloud = self.do_passthrough(cloud, 'y', 2.25, 4)
             # 변경 사항 시작
             # Objects = RadarObjectList()
             # for point_data in cloud:
@@ -74,8 +74,9 @@ class pcl_data_calc():
                 
                 if xyz_cloud.size > 0:
                     xyz_cloud = self.do_statistical_outlier_filtering(xyz_cloud, self.mean_k, self.thresh)
-                    
+
                     if xyz_cloud.size > 0:
+                        xyz_cloud = self.do_statistical_outlier_filtering(xyz_cloud, self.mean_k, self.thresh)
                         xyz_cloud, _ = self.do_euclidean_clustering(xyz_cloud)
                     
                 # Removing ground
@@ -91,10 +92,12 @@ class pcl_data_calc():
                     z = filtered_data[2]
                     velocity = filtered_data[3]
 
+                    kalman_velocity = kalman_filter.call_kalman()
+
                     print("x : ", x)
                     print("y : ", y)
                     print("z : ", z)
-                    print("Velocity [km/h] : ", velocity*3.6)
+                    print("Velocity [m/s] : ", velocity)
 
                     # print("x type : ", type(x))
                     # print("y type : ", type(y))

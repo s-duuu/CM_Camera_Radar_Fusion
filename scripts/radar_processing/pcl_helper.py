@@ -60,7 +60,11 @@ def ros_to_pcl(ros_cloud):
     points_list = []
 
     for data in pc2.read_points(ros_cloud, skip_nans=True):
-        points_list.append([data[0], data[1], data[2], data[3]])
+        
+        if data[4] > -85 and data[4] < 0:
+            print(data[4])
+            print("=======================")
+            points_list.append([data[0], data[1], data[2], data[3]])
 
     pcl_data = pcl.PointCloud_PointXYZRGB()
     pcl_data.from_list(points_list)
