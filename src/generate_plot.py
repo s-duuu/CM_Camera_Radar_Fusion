@@ -1,10 +1,15 @@
 import matplotlib.pyplot as plt
+import numpy as np
 import os
 import csv
 
 c = []
 r = []
 f = []
+crash = []
+vel = []
+before = []
+after = []
 
 os.chdir('/home/heven/CoDeep_ws/src/yolov5_ros/src/csv/result')
 
@@ -15,18 +20,41 @@ with open('distance_fusion_result.csv', 'r') as csvfile:
         r.append(float(row[2]))
         f.append(float(row[3]))
 
-print(c)
+csvfile.close()
+
+# with open('1d_kalman_velocity_test.csv', 'r') as csv2:
+#     line = csv.reader(csv2, delimiter=',')
+#     for r in line:
+#         after.append(float(r[0]))
+
+# print(after)
+
+# print(c)
 
 # print(len(c))
 # print(len(r))
 # print(len(f))
 
-x = list(range(0, 748))
+x = np.arange(0, 753)
+reference = 45.72 - 1/21.6 * x
 fig = plt.figure(figsize=(30, 13))
-plt.plot(x, c, x, r, x, f)
+plt.plot(x, c, linestyle="--", color = "blue", linewidth = 3)
+plt.plot(x, r, linestyle="--", color = "orange", linewidth = 3)
+plt.plot(x, f, linestyle="-", color = "green", linewidth = 5)
+plt.plot(x, reference, linestyle="-", color = "red", linewidth = 3)
+# plt.plot(x, crash, linestyle = "-", color = "green", linewidth = 5)
+# plt.plot(x, vel, linestyle="-", color = "green", linewidth = 5)
+# plt.plot(x, before, linestyle="-", color = "black", linewidth = 3)
+# plt.plot(x, after, linestyle="-", color = "green", linewidth = 5)
 plt.xticks(fontsize=20)
 plt.yticks(fontsize=20)
-plt.legend(['Camera', 'Radar', 'Fusion'], fontsize= 28)
+# plt.ylim([0, 25])
+# plt.hlines(float(-5/3.6), 0, 747, colors="red", linewidth=3)
+plt.legend(['Camera', 'Radar', 'Fusion', 'Reference'], fontsize= 28)
+# plt.legend(["Velocity"], fontsize=28)
+# plt.legend(['Crash Time'], fontsize= 28)
+# plt.legend(["Before Kalman Filter", "After Kalman Filter"], fontsize=28)
+# plt.legend(["Crash Time"], fontsize=28)
 
 # ax1 = fig.add_subplot(1, 1, 1)
 # ax1.plot(x, c, color = 'red', label='Camera')

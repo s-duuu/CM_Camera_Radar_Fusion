@@ -34,18 +34,19 @@ class fusion():
         rospy.init_node('fusion_node', anonymous=False)
         # rospy.Subscriber('camera_objects', CameraObjectList, self.camera_object_callback)
         rospy.Subscriber('yolov5/detections', BoundingBoxes, self.camera_object_callback)
-        # rospy.Subscriber('radar_objects', RadarObjectList, self.radar_object_callback)
+        rospy.Subscriber('radar_objects', RadarObjectList, self.radar_object_callback)
         rospy.Subscriber('/yolov5/image_out', Image, self.visualize)
         # rospy.Subscriber("/carmaker_vds_client_node/image_raw/compressed", CompressedImage, self.visualize)
 
     def camera_object_callback(self, data):
-        now = rospy.get_rostime()
-        rospy.loginfo("Time : %i", now.secs)
         self.bounding_box_list = data.bounding_boxes
-        rospy.Subscriber('radar_objects', RadarObjectList, self.radar_object_callback)
+        # rospy.Subscriber('radar_objects', RadarObjectList, self.radar_object_callback)
 
     def radar_object_callback(self, data):
+        now = rospy.get_rostime()
+        rospy.loginfo("Time : %i", now.secs)
         self.radar_object_list = data.RadarObjectList
+        
     
     def is_in_bbox(self, bbox, radar_2d):
         
@@ -228,10 +229,18 @@ class fusion():
         # 속도 1번째 loop
         else:
             kalman_velocity = final_velocity
+
+        sum = 0
+        total_num = len(self.radar_object_list)
+        for radar_object in self.radar_object_list:
+            sum += radar_object.x
+        
+        average = float(sum / total_num)
+        only_radar_distance_list.append(average)
         
         only_camera_distance_list.append(camera_object[0])
         # print("Radar distance : ", self.filtered_radar_object_list[min_idx].x)
-        only_radar_distance_list.append(self.filtered_radar_object_list[min_idx].x)
+        # only_radar_distance_list.append(self.filtered_radar_object_list[min_idx].x)
         # print("Distance : ", final_distance)
         fusion_distance_list.append(final_distance)
         # print("Kalman Velocity[m/s] : ", kalman_velocity)
@@ -316,14 +325,16 @@ if __name__ == '__main__':
         rospy.spin()
     
     
-    os.chdir('/home/heven/CoDeep_ws/src/yolov5_ros/src/csv/final_result')
+    os.chdir('/home/heven/CoDeep_ws/src/yolov5_ros/src/csv/result')
 
     df = pd.DataFrame({'Camera': only_camera_distance_list, 'Radar': only_radar_distance_list, 'Fusion': fusion_distance_list})        
     df.to_csv("distance_fusion_result.csv", index=True)
 
-    df2 = pd.DataFrame({'Velocity' : velocity_list})
-    df2.to_csv("velocity_fusion_result.csv", index=False)
+    # df2 = pd.DataFrame({'Velocity' : velocity_list})
+    # df2.to_csv("velocity_fusion_result.csv", index=False)
 
-    df3 = pd.DataFrame({'Crash time' : crash_list})
-    df3.to_csv("crash_fusion_result.csv", index=False)
+    # df3 = pd.DataFrame({'Crash time' : crash_list})
+    # df3.to_csv("crash_fusion_result.csv", index=False)
 
+    # df4 = pd.DataFrame({'Radar': only_radar_distance_list})
+    # df4.to_csv("only_radar_distance.csv", index=False)

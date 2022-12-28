@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
 import rospy
+import os
 import pcl
 import math
 import pcl_helper
+# import pandas as pd
 
 import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
@@ -119,6 +121,8 @@ class pcl_data_calc():
                     self.cnt += 1
 
                 self.radar_object_pub.publish(Objects)
+                
+
                 # print(Objects)
             print("===============")
             # Convert pcl -> sensor_msgs/PointCloud2
@@ -219,11 +223,11 @@ class pcl_data_calc():
     
 
 if __name__ == '__main__':
-    try:
-        # file = open("/home/heven/CoDeep_ws/src/yolov5_ros/scripts/radar_processing/data", 'w')
+
+    radar_distance_list = []
+    
+    if not rospy.is_shutdown():
         pcl_data_calc()
         rospy.spin()
-        # file.close()
+
     
-    except rospy.ROSInterruptException:
-        pass
