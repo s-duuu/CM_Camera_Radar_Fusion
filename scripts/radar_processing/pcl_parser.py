@@ -4,7 +4,6 @@ import rospy
 import pcl
 import math
 import pcl_helper
-import kalman_filter
 
 import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
@@ -91,8 +90,6 @@ class pcl_data_calc():
                     y = filtered_data[1]
                     z = filtered_data[2]
                     velocity = filtered_data[3]
-
-                    kalman_velocity = kalman_filter.call_kalman()
 
                     print("x : ", x)
                     print("y : ", y)

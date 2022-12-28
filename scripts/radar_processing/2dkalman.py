@@ -33,18 +33,22 @@ kf.x = np.array([[float(distance_data[0][0])],
 kf.F = np.array([[1, 1/30],
                 [0, 1]])
 
-kf.P = np.array([[25., 0.], [0., 0.000000000001]])
+kf.P = np.array([[1., 0.], [0., 1000000]])
 
-kf.Q = np.array([[500, 0.], [0., 500]])
+kf.Q = np.array([[1., 0.], [0., 1.]])
 
 kf.H = np.array([[1., 0.], [0., 1.]])
 
-kf.R = np.array([[25., 0.], [0., 5000000]])
+kf.R = np.array([[1., 0.], [0., 50000]])
+
+prev_d = float(distance_data[0][0])
+prev_v = float(velocity_data[0][0])
 
 filtered_distance = []
 filtered_velocity = []
 
 for i in range(679):
+    kf.x = np.array([[prev_d], [prev_v]])
     z = np.array([[float(distance_data[i][0])], [float(velocity_data[i][0])]])
     
     kf.predict(u=None, B=None, F=kf.F, Q=kf.Q)
@@ -53,10 +57,13 @@ for i in range(679):
     filtered_distance.append(kf.x[0][0])
     filtered_velocity.append(kf.x[1][0])
 
+    prev_d = kf.x[0][0]
+    prev_v = kf.x[1][0]
+
 
 df = pd.DataFrame({"Distance" : filtered_distance, "Velocity" : filtered_velocity})
 
-df.to_csv("kalman_result.csv", index=False)
+df.to_csv("2d_kalman_result.csv", index=False)
 
 
 
