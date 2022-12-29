@@ -5,7 +5,7 @@ import os
 import pcl
 import math
 import pcl_helper
-# import pandas as pd
+import pandas as pd
 
 import sensor_msgs.point_cloud2 as pc2
 from sensor_msgs.msg import PointCloud2
@@ -29,7 +29,7 @@ class pcl_data_calc():
         self.xmax = 4.0
         self.mean_k = 3
         # 파라미터 수정
-        self.thresh = 0.00001
+        self.thresh = 0.000001
         self.raw_list = []
         self.velocity_list = []
         self.cnt = 0
@@ -79,6 +79,7 @@ class pcl_data_calc():
                     if xyz_cloud.size > 0:
                         xyz_cloud = self.do_statistical_outlier_filtering(xyz_cloud, self.mean_k, self.thresh)
                         xyz_cloud, _ = self.do_euclidean_clustering(xyz_cloud)
+                        xyz_cloud, _ = self.do_euclidean_clustering(xyz_cloud)
                     
                 # Removing ground
                 # _, _, cloud = self.do_ransac_plane_normal_segmentation(cloud, 0.05)
@@ -93,9 +94,9 @@ class pcl_data_calc():
                     z = filtered_data[2]
                     velocity = filtered_data[3]
 
-                    print("x : ", x)
-                    print("y : ", y)
-                    print("z : ", z)
+                    # print("x : ", x)
+                    # print("y : ", y)
+                    # print("z : ", z)
                     print("Velocity [m/s] : ", velocity)
 
                     # print("x type : ", type(x))
@@ -115,6 +116,9 @@ class pcl_data_calc():
                     object_variable.y = y
                     object_variable.z = z
                     object_variable.velocity = velocity
+
+                    radar_distance_list.append(x)
+                    radar_velocity_list.append(velocity)
 
                     Objects.RadarObjectList.append(object_variable)
 
@@ -225,9 +229,14 @@ class pcl_data_calc():
 if __name__ == '__main__':
 
     radar_distance_list = []
+    radar_velocity_list = []
     
     if not rospy.is_shutdown():
         pcl_data_calc()
         rospy.spin()
+    
+    os.chdir("/home/heven/CoDeep_ws/src/yolov5_ros/src/csv/radar_result")
 
+    df = pd.DataFrame({'Distance': radar_distance_list, 'Velocity': radar_velocity_list})
+    df.to_csv("radar_velocity_test.csv", index=False)
     

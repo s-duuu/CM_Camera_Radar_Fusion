@@ -1,4 +1,4 @@
-a = 3
-b = 2
+a = [3, 2, 1]
+b = [2, 1, 3]
 
-print(a/b)
+print(b.index(min(b)))

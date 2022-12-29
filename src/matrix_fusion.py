@@ -9,6 +9,7 @@ import math
 import cv2
 import pandas as pd
 
+
 from sensor_msgs.msg import Image
 from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge
@@ -17,6 +18,7 @@ from yolov5_ros.msg import BoundingBox
 from yolov5_ros.msg import CameraObjectList
 from yolov5_ros.msg import RadarObjectList
 from filterpy.kalman import KalmanFilter
+from time import time
 
 class fusion():
     def __init__(self):
@@ -25,13 +27,14 @@ class fusion():
         self.fusion_index_list = []
         self.fusion_distance_list = []
         self.radar_object_list = []
-        self.filtered_radar_object_list = []
         self.bounding_box_list = []
         self.distance_thresh = 6
         self.angle_thresh = 30
         self.my_speed = 20
+        self.flag = 0
 
         rospy.init_node('fusion_node', anonymous=False)
+        print(rospy.get_time())
         # rospy.Subscriber('camera_objects', CameraObjectList, self.camera_object_callback)
         rospy.Subscriber('yolov5/detections', BoundingBoxes, self.camera_object_callback)
         rospy.Subscriber('radar_objects', RadarObjectList, self.radar_object_callback)
@@ -39,17 +42,17 @@ class fusion():
         # rospy.Subscriber("/carmaker_vds_client_node/image_raw/compressed", CompressedImage, self.visualize)
 
     def camera_object_callback(self, data):
+        if self.flag == 0:
+            self.init_time = time()
         self.bounding_box_list = data.bounding_boxes
+        self.flag += 1
         # rospy.Subscriber('radar_objects', RadarObjectList, self.radar_object_callback)
 
     def radar_object_callback(self, data):
-        now = rospy.get_rostime()
-        rospy.loginfo("Time : %i", now.secs)
         self.radar_object_list = data.RadarObjectList
         
-    
     def is_in_bbox(self, bbox, radar_2d):
-        
+
         if radar_2d[0] > bbox.xmin and radar_2d[0] < bbox.xmax and radar_2d[1] > bbox.ymin and radar_2d[1] < bbox.ymax:
             return True
         
@@ -184,69 +187,149 @@ class fusion():
     #         self.risk_calculate(final_distance, final_velocity)
     
     def second_matching(self, bbox, camera_object):
-        
+        self.filtered_radar_object_list = []
+        self.x_list = []
         # 레이더 데이터 있을 때
         if len(self.radar_object_list) != 0:
             for radar_object in self.radar_object_list:
-                
+                        
                 if self.is_in_bbox(bbox, self.transform(radar_object)) == True:
                     self.filtered_radar_object_list.append(radar_object)
+                    self.x_list.append(radar_object.x)
         
         min_iou = math.inf
-        min_idx = 0
+        min_x = math.inf
+        min_idx = -1
         cnt = 0
+        
+        print("!!! Fusion distance length !!! : ", len(fusion_distance_list))
+        print("!!! After 1st filter length !!! : ", len(self.filtered_radar_object_list))
+        if len(fusion_distance_list) != 0:
+            # 1단계 거친 레이더 포인트 남아있을 때
+            if len(self.filtered_radar_object_list) != 0:
+                for radar_object in self.filtered_radar_object_list:
+                    if fusion_distance_list[-1] < 15:
+                        # print("Fucking : ", abs(only_radar_distance_list[-1] - radar_object.x))
+                        print("Last X : ", only_radar_distance_list[-1])
+                        print("Cur X : ", radar_object.x)
+                        print("Difference : ", abs(only_radar_distance_list[-1] - radar_object.x))
+                        if abs(only_radar_distance_list[-1] - radar_object.x) < 0.35:
+                                    
+                            if math.sqrt((radar_object.x - camera_object[0])**2 + (radar_object.y - camera_object[1])**2) < min_iou:
+                                min_idx = cnt
+                                min_iou = math.sqrt((radar_object.x - camera_object[0])**2 + (radar_object.y - camera_object[1])**2)
+                            
+                        else:
+                            pass
+                    
+                    else:
+                         if math.sqrt((radar_object.x - camera_object[0])**2 + (radar_object.y - camera_object[1])**2) < min_iou:
+                            min_idx = cnt
+                            min_iou = math.sqrt((radar_object.x - camera_object[0])**2 + (radar_object.y - camera_object[1])**2)
 
-        # 1단계 거친 레이더 포인트 남아있을 때
-        if len(self.filtered_radar_object_list) != 0:
-            for radar_object in self.filtered_radar_object_list:
-                if math.sqrt((radar_object.x - camera_object[0])**2 + (radar_object.y - camera_object[1])**2) < min_iou:
-                    min_idx = cnt
-                    min_iou = math.sqrt((radar_object.x - camera_object[0])**2 + (radar_object.y - camera_object[1])**2)
+                    cnt += 1
+
+                if min_idx < 0:
+                    final_distance = fusion_distance_list[-1]
+                    final_velocity = velocity_list[-1]
+                    # print("###Filter Succeed###")
                 
-                cnt += 1
-        
-            cv2.line(self.image, self.transform(self.filtered_radar_object_list[min_idx]), self.transform(self.filtered_radar_object_list[min_idx]), (0, 255, 0), 15)
-        
-            if camera_object[0] > self.filtered_radar_object_list[min_idx].x:
-                final_distance = self.filtered_radar_object_list[min_idx].x
-             
+                else:
+                    final_distance = (camera_object[0]*0.3 + self.filtered_radar_object_list[min_idx].x*0.7)
+                    print("Selected Radar X : ", self.filtered_radar_object_list[min_idx].x)
+                    final_velocity = self.filtered_radar_object_list[min_idx].velocity
+
+                if abs(final_velocity - velocity_list[-1]) > 1:
+                    final_velocity = velocity_list[-1]
+
+
+                # print("!!!!Min Index!!!! : ", min_idx)
+                # print("Last Point : ", only_radar_distance_list[-1])
+                # print("Min Point : ", self.filtered_radar_object_list[min_idx].x)
+                # print("Difference : ", abs(only_radar_distance_list[-1] - self.filtered_radar_object_list[min_idx].x))
+
+                cv2.line(self.image, self.transform(self.filtered_radar_object_list[min_idx]), self.transform(self.filtered_radar_object_list[min_idx]), (0, 255, 0), 15)
+
+            # 레이더 포인트 없을 때
             else:
-                final_distance = (camera_object[0] + self.filtered_radar_object_list[min_idx].x) / 2
-            
-            final_velocity = self.filtered_radar_object_list[min_idx].velocity
-
-        # 레이더 포인트 없을 때
+                final_distance = fusion_distance_list[-1]
+                final_velocity = velocity_list[-1]
+        
         else:
-            final_distance = camera_object[0]
-            final_velocity = -5.0 / 3.6
 
+            if len(self.filtered_radar_object_list) != 0:
+                for radar_object in self.filtered_radar_object_list:
+                    if math.sqrt((radar_object.x - camera_object[0])**2 + (radar_object.y - camera_object[1])**2) < min_iou:
+                        min_idx = cnt
+                        min_iou = math.sqrt((radar_object.x - camera_object[0])**2 + (radar_object.y - camera_object[1])**2)
 
+                    cnt += 1
+                cv2.line(self.image, self.transform(self.filtered_radar_object_list[min_idx]), self.transform(self.filtered_radar_object_list[min_idx]), (0, 255, 0), 15)
+            
+                final_distance = (camera_object[0]*0.3 + self.filtered_radar_object_list[min_idx].x*0.7)
+                
+                final_velocity = self.filtered_radar_object_list[min_idx].velocity
+
+            # 레이더 포인트 없을 때
+            else:
+                final_distance = camera_object[0]
+                final_velocity = velocity_list[-1]
+        
         # 속도 2번째 이후 loop
         if len(velocity_list) != 0:
-            print("Initial : ", velocity_list[-1])
+            # print("Initial : ", velocity_list[-1])
             kalman_velocity = kalman_filter.call_1dkalman(kf, velocity_list[-1], final_velocity)
         
         # 속도 1번째 loop
         else:
             kalman_velocity = final_velocity
 
+        x_list = []
+        d_min = math.inf
         sum = 0
         total_num = len(self.radar_object_list)
+            
         for radar_object in self.radar_object_list:
+            x_list.append(radar_object.x)
+            if len(only_radar_distance_list) != 0:
+                if abs(radar_object.x - only_radar_distance_list[-1]) < d_min:
+                    d_min = abs(radar_object.x - only_radar_distance_list[-1])
             sum += radar_object.x
         
         average = float(sum / total_num)
-        only_radar_distance_list.append(average)
+        if total_num == 0:
+            only_radar_distance_list.append(only_radar_distance_list[-1])
+        else:
+            if d_min < 1 or d_min == math.inf:
+                only_radar_distance_list.append(min(x_list))
+            else:
+                only_radar_distance_list.append(only_radar_distance_list[-1])
+            # print("Radar list point x : ", min(x_list))
         
+        print("Final distance : ", final_distance)
+        # if len(self.filtered_radar_object_list) == 0:
+        #     fusion_radar_list.append(fusion_radar_list[-1])
+        # else:
+        #     fusion_radar_list.append(self.filtered_radar_object_list[min_idx].x)
+
         only_camera_distance_list.append(camera_object[0])
         # print("Radar distance : ", self.filtered_radar_object_list[min_idx].x)
         # only_radar_distance_list.append(self.filtered_radar_object_list[min_idx].x)
         # print("Distance : ", final_distance)
         fusion_distance_list.append(final_distance)
+        # fusion_radar_list.append(self.filtered_radar_object_list[min_idx].x)
         # print("Kalman Velocity[m/s] : ", kalman_velocity)
+        # velocity_list.append(kalman_velocity)
+        now = rospy.get_rostime()
+        rospy.loginfo("Time : %i", now.secs)
+        cur = time()
         velocity_list.append(kalman_velocity)
+        # print("Time difference : ", cur - self.init_time + (0.65))
+        # print("Current : ", cur)
+        # print("Init Time : ", self.init_time)
+        time_list.append(cur - self.init_time)
         
-        print("-----------------------")
+        print("==================================")
 
         self.risk_calculate(final_distance, kalman_velocity * 3.6)
 
@@ -263,13 +346,13 @@ class fusion():
 
             crash_list.append(crash_time)
 
-            print("Crash time : ", crash_time)
+            # print("Crash time : ", crash_time)
             
             lane_change_time = 3.5 * 3600 / (1000*self.my_speed * math.cos(math.radians(85)))
 
-            print("Lane change time : ", lane_change_time)
+            # print("Lane change time : ", lane_change_time)
 
-            print("-----------------------------------------------")
+            # print("-----------------------------------------------")
             
             # Ok to change lane
             if crash_time - lane_change_time >= 3.5 or self.my_speed > car_velocity:
@@ -314,8 +397,10 @@ if __name__ == '__main__':
     
     kf = KalmanFilter(dim_x=2, dim_z=1)
 
+    time_list = []
     only_camera_distance_list = []
     only_radar_distance_list = []
+    # fusion_radar_list = []
     fusion_distance_list = []
     velocity_list = []
     crash_list = []
@@ -325,13 +410,13 @@ if __name__ == '__main__':
         rospy.spin()
     
     
-    os.chdir('/home/heven/CoDeep_ws/src/yolov5_ros/src/csv/result')
+    os.chdir('/home/heven/CoDeep_ws/src/yolov5_ros/src/csv/test')
 
-    df = pd.DataFrame({'Camera': only_camera_distance_list, 'Radar': only_radar_distance_list, 'Fusion': fusion_distance_list})        
-    df.to_csv("distance_fusion_result.csv", index=True)
+    df = pd.DataFrame({'Time': time_list, 'Camera': only_camera_distance_list, 'Radar': only_radar_distance_list, 'Fusion': fusion_distance_list})        
+    df.to_csv("distance_fusion_test.csv", index=True)
 
-    # df2 = pd.DataFrame({'Velocity' : velocity_list})
-    # df2.to_csv("velocity_fusion_result.csv", index=False)
+    df2 = pd.DataFrame({'Time': time_list, 'Velocity' : velocity_list})
+    df2.to_csv("velocity_fusion_test.csv", index=False)
 
     # df3 = pd.DataFrame({'Crash time' : crash_list})
     # df3.to_csv("crash_fusion_result.csv", index=False)
