@@ -1,4 +1,5 @@
-a = [3, 2, 1]
-b = [2, 1, 3]
+a = [1,2,3]
 
-print(b.index(min(b)))
+for member in a:
+    if 1 < member < 3:
+        print(member)
